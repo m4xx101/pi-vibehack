@@ -66,10 +66,14 @@ export async function spawnOperator(
 
   const userPrompt = `Operator input contract:\n\`\`\`json\n${JSON.stringify(input, null, 2)}\n\`\`\`\n\nExecute the next_test. Return EXACTLY the OperatorOutput JSON via terminate=true. Do not narrate outside JSON.`;
 
+  const { envWithShim } = await import("./path-shim.ts");
+  const env = await envWithShim();
+
   return await new Promise<OperatorOutput>((resolve, reject) => {
     const child = spawn(pi, [...args, userPrompt], {
       stdio: ["ignore", "pipe", "pipe"],
       shell: false,
+      env,
     });
     let stdout = "";
     let stderr = "";
