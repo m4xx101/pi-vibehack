@@ -1,6 +1,6 @@
 {
   "name": "@m4xx101/pi-vibehack",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0",
   "description": "Context-aware vibe-hacking harness on pi-mono. Hypothesis-tree REPL, graphify-backed recall, on-the-fly tool synthesis. Authorized testing only.",
   "keywords": ["pi-mono", "pi-agent", "skill", "agentskills", "security", "offensive-security", "pentest", "bug-bounty", "ctf", "red-team", "vibe-hacking", "vibehack"],
   "homepage": "https://github.com/m4xx101/pi-vibehack#readme",
