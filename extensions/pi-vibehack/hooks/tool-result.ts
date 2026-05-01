@@ -35,8 +35,9 @@ export function registerToolResultHook(pi: any) {
 
     // Trigger graphify update on confirmed-mutation results (best-effort, fire-and-forget)
     if (["vibehack_confirm", "vibehack_evidence"].includes(event.toolName)) {
-      const { triggerGraphifyUpdate } = await import("../graph/recall.ts");
+      const { triggerGraphifyUpdate, triggerGlobalGraphifyUpdate } = await import("../graph/recall.ts");
       triggerGraphifyUpdate(dir).catch(() => {});
+      triggerGlobalGraphifyUpdate().catch(() => {});
     }
 
     // Negative-space synthesis on bash outputs.

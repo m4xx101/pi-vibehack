@@ -112,3 +112,19 @@ export async function triggerGraphifyUpdate(targetDir: string): Promise<void> {
     }
   });
 }
+
+export async function triggerGlobalGraphifyUpdate(): Promise<void> {
+  return await new Promise((resolve) => {
+    try {
+      const c = spawn(
+        "graphify",
+        ["update", join(vibehackRoot(), "graph"), "--scan", join(vibehackRoot(), "engagements")],
+        { stdio: "ignore", ...SPAWN_OPTS },
+      );
+      c.on("close", () => resolve());
+      c.on("error", () => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
