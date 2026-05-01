@@ -39,6 +39,13 @@ export async function spawnOperator(
   const tmpSys = join(await fs.mkdtemp(join(tmpdir(), "vh-op-")), "system.md");
   await fs.writeFile(tmpSys, systemPromptBody, "utf8");
 
+  if (input.requires_browser) {
+    const { detectBrowserBackend, recipeForBackend } = await import("./browser-bridge.ts");
+    const backend = await detectBrowserBackend();
+    const recipe = recipeForBackend(backend);
+    if (recipe) input.recipe_hints = [...(input.recipe_hints ?? []), recipe];
+  }
+
   const pi = await findPiBinary();
   const args = [
     "--mode",
