@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderTreeMd, foldNodes } from "../extensions/pi-vibehack/render/tree-md.ts";
+import { renderFindingsMd } from "../extensions/pi-vibehack/render/findings-md.ts";
 import type { VibehackEvent } from "../extensions/pi-vibehack/lib/event-schema.ts";
 
 const ev = (over: Partial<VibehackEvent>): VibehackEvent => ({
@@ -176,5 +177,25 @@ describe("foldNodes cost semantics", () => {
       foldNodes(events);
       expect(warnings.some((w) => /orphan node_update/.test(w))).toBe(true);
     } finally { console.warn = orig; }
+  });
+});
+
+describe("renderFindingsMd", () => {
+  it("lists confirmed leaves with poc link", () => {
+    const events = [
+      ev({}),
+      ev({ node_id: "n_1a", parent_id: "n_root", kind: "leaf", phase: "exploit", claim: "RCE via JBoss" }),
+      ev({ event: "confirm", node_id: "n_1a" }),
+    ];
+    const md = renderFindingsMd(events, "e1");
+    expect(md).toContain("# Findings: e1");
+    expect(md).toContain("## n_1a — RCE via JBoss");
+    expect(md).toContain("poc/n_1a/poc.md");
+  });
+
+  it("empty when no confirms", () => {
+    const events = [ev({})];
+    const md = renderFindingsMd(events, "e1");
+    expect(md).toContain("_no confirmed findings yet_");
   });
 });
