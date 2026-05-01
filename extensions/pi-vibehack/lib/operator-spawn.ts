@@ -37,7 +37,13 @@ export async function spawnOperator(
   const operatorModel = profile.operator ?? "claude-opus-4-7";
 
   const tmpSys = join(await fs.mkdtemp(join(tmpdir(), "vh-op-")), "system.md");
-  await fs.writeFile(tmpSys, systemPromptBody, "utf8");
+  let mergedSystem = systemPromptBody;
+  if (input.specialist_skill) {
+    const { loadSpecialist } = await import("./specialist-loader.ts");
+    const spec = await loadSpecialist(input.specialist_skill);
+    if (spec) mergedSystem = `${spec}\n\n---\n\n${systemPromptBody}`;
+  }
+  await fs.writeFile(tmpSys, mergedSystem, "utf8");
 
   if (input.requires_browser) {
     const { detectBrowserBackend, recipeForBackend } = await import("./browser-bridge.ts");
