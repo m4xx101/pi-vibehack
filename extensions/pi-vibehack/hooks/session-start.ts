@@ -29,6 +29,28 @@ export function registerSessionStartHook(pi: any) {
         `pi-vibehack resumed engagement ${eng} (${nodes.size} nodes)`,
         "info",
       );
+
+      // Soft-dep banners
+      const hints: string[] = [];
+      try {
+        const { detectScurl } = await import("../lib/scurl-bridge.ts");
+        if (!(await detectScurl())) hints.push("💡 install pi-super-curl: `npm i -g pi-super-curl`");
+      } catch {}
+      try {
+        const { detectBrowserBackend } = await import("../lib/browser-bridge.ts");
+        if ((await detectBrowserBackend()) === "none") hints.push("💡 install surf-cli or use playwright-cli: `npm i -g surf-cli`");
+      } catch {}
+      try {
+        const { spawn } = await import("node:child_process");
+        const SHELL_OPT = process.platform === "win32" ? { shell: true } : {};
+        const ok = await new Promise<boolean>((resolve) => {
+          const c = spawn("graphify", ["--version"], { stdio: "ignore", ...SHELL_OPT });
+          c.on("error", () => resolve(false));
+          c.on("close", (code) => resolve(code === 0));
+        });
+        if (!ok) hints.push("💡 install graphify for cross-engagement recall (falling back to grep)");
+      } catch {}
+      for (const h of hints) ctx?.ui?.notify?.(h, "info");
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack session_start failed: ${e?.message ?? String(e)}`,
