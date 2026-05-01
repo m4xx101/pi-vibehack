@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { expandTool } from "../extensions/pi-vibehack/tools/expand.ts";
+import { pruneTool } from "../extensions/pi-vibehack/tools/prune.ts";
 import { readEvents } from "../extensions/pi-vibehack/lib/events.ts";
 import { engagementDir, setActiveEngagement } from "../extensions/pi-vibehack/lib/engagement.ts";
 
@@ -47,5 +48,14 @@ describe("vibehack_expand", () => {
       falsifier: "",
       rationale: "z",
     } as any, undefined, undefined, fakeCtx)).rejects.toThrow(/falsifier/i);
+  });
+});
+
+describe("vibehack_prune", () => {
+  it("appends a node_prune event", async () => {
+    await pruneTool.execute("c", { node_id: "n_1a", reason: "out of scope" } as any, undefined, undefined, fakeCtx);
+    const events = await readEvents(engagementDir("e1"));
+    expect(events[0].event).toBe("node_prune");
+    expect(events[0].rationale).toBe("out of scope");
   });
 });
