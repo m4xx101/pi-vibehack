@@ -31,4 +31,23 @@ describe("hypothesis-or-die invariant", () => {
     recordToolCall("vibehack_propose_chain");
     expect(getMutationGateMessage()).toMatch(/no tree mutation/);
   });
+
+  it("gate message escape list excludes proposal tools (anti-loop)", () => {
+    // The gate must NOT advertise propose_chain/propose_specialist as escapes —
+    // those are ALSO listed in turn-state's mutation set check, but the
+    // recordToolCall test above proves they don't flip mutated=true. If the
+    // gate listed them, the agent would emit one and get gated again.
+    recordToolCall("read");
+    const msg = getMutationGateMessage()!;
+    // Escape list (between "Emit one of:" and "if genuinely stuck") must not
+    // contain propose_*. Use a positive check: exactly the 5 mutating tools.
+    const escapeList = msg.split("Emit one of:")[1].split("if genuinely stuck")[0];
+    expect(escapeList).toContain("vibehack_expand");
+    expect(escapeList).toContain("vibehack_prune");
+    expect(escapeList).toContain("vibehack_confirm");
+    expect(escapeList).toContain("vibehack_evidence");
+    expect(escapeList).toContain("vibehack_dead_end");
+    expect(escapeList).not.toMatch(/vibehack_propose_chain[,\s]/);
+    expect(escapeList).not.toMatch(/vibehack_propose_specialist[,\s]/);
+  });
 });

@@ -30,12 +30,23 @@ export function registerToolResultHook(pi: any) {
   });
 }
 
+/**
+ * Returns the hypothesis-or-die gate string for the next `before_agent_start`
+ * (Phase 10), or null if the last turn satisfied the invariant.
+ *
+ * The escape list contains ONLY tools that mark `mutated=true` in turn-state —
+ * proposals (`vibehack_propose_chain`, `vibehack_propose_specialist`) stage
+ * operator-gated changes that may never apply, so they intentionally do NOT
+ * satisfy the invariant. Listing them here would create a confusing loop where
+ * the agent does what the gate said and still gets gated next turn.
+ */
 export function getMutationGateMessage(): string | null {
   if (turnMutated()) return null;
   return (
     `[VIBEHACK INVARIANT] Last turn produced no tree mutation. Emit one of: ` +
     `vibehack_expand, vibehack_prune, vibehack_confirm, vibehack_evidence, ` +
-    `vibehack_propose_chain, vibehack_propose_specialist, ` +
-    `or vibehack_dead_end <node_id> if genuinely stuck.`
+    `or vibehack_dead_end <node_id> if genuinely stuck. ` +
+    `(Note: vibehack_propose_chain and vibehack_propose_specialist do NOT ` +
+    `satisfy the invariant — they stage operator-gated changes.)`
   );
 }
