@@ -1,6 +1,12 @@
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
 import { turnMutated } from "../lib/turn-state.ts";
+import {
+  detectMissingHeaders,
+  detectFilteredPorts,
+  looksLikeHttpResponse,
+  parseHttpHeaders,
+} from "../lib/negative-space.ts";
 
 export function registerToolResultHook(pi: any) {
   pi.on("tool_result", async (event: any, _ctx: any) => {
@@ -26,7 +32,59 @@ export function registerToolResultHook(pi: any) {
         },
       } as any);
     } catch {}
-    // Negative-space synthesis is appended here in Phase 6.
+
+    // Negative-space synthesis on bash outputs.
+    if (event.toolName === "bash" && typeof event.output === "string") {
+      if (looksLikeHttpResponse(event.output)) {
+        const headers = parseHttpHeaders(event.output);
+        const missing = detectMissingHeaders(headers);
+        for (const m of missing) {
+          try {
+            await appendEvent(dir, {
+              ts: nowIso(),
+              engagement_id: eng,
+              event: "evidence_add",
+              metadata: { synthetic: true },
+              evidence: [{
+                ts: nowIso(),
+                kind: "negative-space:missing-header",
+                ref: `tool_call:${event.toolCallId}`,
+                summary: `missing ${m.header} (severity=${m.severity})`,
+                synthetic: true,
+              }],
+            } as any);
+          } catch {}
+        }
+      }
+      // Nmap parsing: lines like "22/tcp open ssh"
+      if (/^\d+\/tcp\s+\w+/m.test(event.output)) {
+        const open = new Set<number>();
+        for (const line of event.output.split(/\r?\n/)) {
+          const m = /^(\d+)\/tcp\s+open/.exec(line);
+          if (m) open.add(parseInt(m[1], 10));
+        }
+        if (open.size > 0) {
+          const filtered = detectFilteredPorts(open);
+          for (const f of filtered.slice(0, 3)) {
+            try {
+              await appendEvent(dir, {
+                ts: nowIso(),
+                engagement_id: eng,
+                event: "evidence_add",
+                metadata: { synthetic: true },
+                evidence: [{
+                  ts: nowIso(),
+                  kind: "negative-space:filtered-port",
+                  ref: `tool_call:${event.toolCallId}`,
+                  summary: `port ${f.port} not in open set`,
+                  synthetic: true,
+                }],
+              } as any);
+            } catch {}
+          }
+        }
+      }
+    }
   });
 }
 
