@@ -9,6 +9,33 @@ import { getMutationGateMessage } from "./tool-result.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+async function buildBoundsAdvisory(eng: string): Promise<string> {
+  try {
+    const { readEvents } = await import("../lib/events.ts");
+    const { foldNodes } = await import("../render/tree-md.ts");
+    const events = await readEvents(engagementDir(eng));
+    const nodes = foldNodes(events);
+    const warnings: string[] = [];
+    const depthOf = (id: string): number => {
+      let d = 0; let cur = nodes.get(id);
+      while (cur && cur.parent_id) { d++; cur = nodes.get(cur.parent_id); }
+      return d;
+    };
+    for (const n of nodes.values()) {
+      if (n.status !== "open" && n.status !== "in-flight") continue;
+      if (depthOf(n.node_id) >= 6) warnings.push(`node ${n.node_id} at depth 6 — prune or confirm`);
+    }
+    for (const n of nodes.values()) {
+      const openChildren = n.children.filter((c: string) => {
+        const ch = nodes.get(c);
+        return ch && (ch.status === "open" || ch.status === "in-flight");
+      });
+      if (openChildren.length >= 8) warnings.push(`node ${n.node_id} has ${openChildren.length} open children — prune or confirm before expanding more`);
+    }
+    return warnings.length === 0 ? "" : `Bounds advisory:\n${warnings.map((w) => `- ${w}`).join("\n")}`;
+  } catch { return ""; }
+}
+
 export function registerBeforeAgentStartHook(pi: any) {
   pi.on("before_agent_start", async (event: any, ctx: any) => {
     startTurn(`turn-${Date.now()}`);
@@ -47,6 +74,9 @@ export function registerBeforeAgentStartHook(pi: any) {
 
     const gate = getMutationGateMessage();
 
+    let bounds = "";
+    if (eng) bounds = await buildBoundsAdvisory(eng);
+
     const blocks: string[] = [];
     if (persona) blocks.push(persona);
     if (plannerSys) blocks.push(plannerSys);
@@ -55,6 +85,7 @@ export function registerBeforeAgentStartHook(pi: any) {
     if (handoff.trim()) blocks.push(`<handoff_from_prior_subprocess>\n${handoff}\n</handoff_from_prior_subprocess>`);
     if (steer.trim()) blocks.push(`<operator_steer>\n${steer}\n</operator_steer>`);
     if (gate) blocks.push(`<invariant>${gate}</invariant>`);
+    if (bounds) blocks.push(`<bounds_advisory>${bounds}</bounds_advisory>`);
 
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
     return { systemPrompt: newSystem };
