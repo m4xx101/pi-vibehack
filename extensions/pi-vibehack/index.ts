@@ -134,6 +134,25 @@ export default function vibehack(pi: any) {
     },
   });
 
+  pi.registerCommand?.("steer", {
+    description: "Inject a free-text steering note into the next Planner turn",
+    handler: async (args: string, ctx: any) => {
+      const { activeEngagementId } = await import("./lib/engagement.ts");
+      const { appendSteer } = await import("./lib/pending-steer.ts");
+      const { appendEvent, nowIso } = await import("./lib/events.ts");
+      const eng = await activeEngagementId();
+      if (!eng) { ctx.ui.notify("no active engagement", "warn"); return; }
+      const text = args.trim();
+      if (!text) { ctx.ui.notify("usage: /steer <text>", "warn"); return; }
+      await appendSteer(eng, text);
+      try {
+        const { engagementDir } = await import("./lib/engagement.ts");
+        await appendEvent(engagementDir(eng), { ts: nowIso(), engagement_id: eng, event: "steer", rationale: text } as any);
+      } catch {}
+      ctx.ui.notify(`steered: ${text}`, "info");
+    },
+  });
+
   pi.registerCommand?.("vibehack-chain-reject", {
     description: "Reject the most recent proposed chain",
     handler: async (args: string, ctx: any) => {

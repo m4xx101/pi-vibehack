@@ -39,6 +39,12 @@ export function registerBeforeAgentStartHook(pi: any) {
       handoff = await consumePendingHandoff(eng);
     }
 
+    let steer = "";
+    if (eng) {
+      const { consumeSteer } = await import("../lib/pending-steer.ts");
+      steer = await consumeSteer(eng);
+    }
+
     const gate = getMutationGateMessage();
 
     const blocks: string[] = [];
@@ -47,6 +53,7 @@ export function registerBeforeAgentStartHook(pi: any) {
     if (globalAgentsMd.trim()) blocks.push(`<pinned_global>\n${globalAgentsMd}\n</pinned_global>`);
     if (agentsMd.trim()) blocks.push(`<pinned_engagement>\n${agentsMd}\n</pinned_engagement>`);
     if (handoff.trim()) blocks.push(`<handoff_from_prior_subprocess>\n${handoff}\n</handoff_from_prior_subprocess>`);
+    if (steer.trim()) blocks.push(`<operator_steer>\n${steer}\n</operator_steer>`);
     if (gate) blocks.push(`<invariant>${gate}</invariant>`);
 
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
