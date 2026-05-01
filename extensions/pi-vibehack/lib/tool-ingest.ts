@@ -140,6 +140,21 @@ export async function ingestSynthesis(req: IngestRequest): Promise<IngestResult>
 }
 
 export async function ingest(req: IngestRequest): Promise<IngestResult> {
+  if (req.specialist_kind) {
+    const { landSpecialist } = await import("./specialist-ingest.ts");
+    const r = await landSpecialist({
+      kind: req.specialist_kind,
+      description: req.target.slice(0, 200),
+      body: req.inline_spec ?? req.target,
+    });
+    return {
+      ok: r.ok,
+      path: r.path,
+      recipe_path: r.path,
+      validation: { kind: "help", passed: r.ok, output: r.ok ? "frontmatter ok" : (r.error ?? "") },
+      error: r.error,
+    };
+  }
   if (req.mode === "cli") return ingestCli(req);
   if (req.mode === "repo") return ingestRepo(req);
   if (req.mode === "synthesis" || req.mode === "inline") return ingestSynthesis(req);
