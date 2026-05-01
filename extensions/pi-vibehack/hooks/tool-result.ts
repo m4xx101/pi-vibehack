@@ -33,6 +33,12 @@ export function registerToolResultHook(pi: any) {
       } as any);
     } catch {}
 
+    // Trigger graphify update on confirmed-mutation results (best-effort, fire-and-forget)
+    if (["vibehack_confirm", "vibehack_evidence"].includes(event.toolName)) {
+      const { triggerGraphifyUpdate } = await import("../graph/recall.ts");
+      triggerGraphifyUpdate(dir).catch(() => {});
+    }
+
     // Negative-space synthesis on bash outputs.
     if (event.toolName === "bash" && typeof event.output === "string") {
       if (looksLikeHttpResponse(event.output)) {

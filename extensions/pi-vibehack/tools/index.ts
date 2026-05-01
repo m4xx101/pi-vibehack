@@ -5,9 +5,7 @@ export { evidenceTool } from "./evidence.ts";
 export { deadEndTool } from "./dead-end.ts";
 export { proposeChainTool } from "./propose-chain.ts";
 export { proposeSpecialistTool } from "./propose-specialist.ts";
-// recallTool added in Phase 12 (graphify-backed); declared in PLANNER_TOOL_NAMES
-// below as a forward reference for prompt enumeration only — do not iterate this
-// list to resolve tool objects until Phase 12 lands.
+export { recallTool } from "./recall.ts";
 
 export const PLANNER_TOOL_NAMES = [
   "vibehack_expand",
@@ -17,7 +15,7 @@ export const PLANNER_TOOL_NAMES = [
   "vibehack_dead_end",
   "vibehack_propose_chain",
   "vibehack_propose_specialist",
-  "vibehack_recall", // forward reference; tool object created in Phase 12
+  "vibehack_recall",
 ];
 
 // Tools whose call genuinely advances the tree (state-mutating). Phase 5's
