@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: vibehack-dvwa-smoke
+    ports:
+      - "127.0.0.1:8080:80"
+    environment:
+      - DVWA_RECAPTCHA_PUBLIC_KEY=""
+      - DVWA_RECAPTCHA_PRIVATE_KEY=""
