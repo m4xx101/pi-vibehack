@@ -1,0 +1,16 @@
+{
+  "name": "auth-bearer-probe",
+  "description": "Probe an endpoint with a bearer token; surface response to the agent.",
+  "method": "GET",
+  "url": "{{env.TARGET_URL}}",
+  "headers": {
+    "Authorization": "Bearer {{env.BEARER}}"
+  },
+  "inputs": [
+    {
+      "name": "BEARER",
+      "description": "Bearer token to send in Authorization header.",
+      "sendToAgent": true
+    }
+  ]
+}

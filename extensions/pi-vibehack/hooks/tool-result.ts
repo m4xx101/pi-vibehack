@@ -91,6 +91,15 @@ export function registerToolResultHook(pi: any) {
         }
       }
     }
+
+    // Mirror Operator-returned auth_state_changes into pi-super-curl config (if present)
+    try {
+      const out = (event as any).structuredOutput;
+      if (out?.auth_state_changes && out.auth_state_changes.profile_id) {
+        const { mirrorAuthProfile } = await import("../lib/scurl-bridge.ts");
+        await mirrorAuthProfile(out.auth_state_changes);
+      }
+    } catch {}
   });
 }
 

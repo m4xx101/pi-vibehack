@@ -1,0 +1,20 @@
+{
+  "name": "jwt-tamper",
+  "description": "Tamper a JWT (alg=none, kid-injection, or signature-strip) and replay against the target.",
+  "method": "GET",
+  "url": "{{env.TARGET_URL}}",
+  "headers": {
+    "Authorization": "Bearer {{jwt.tampered}}"
+  },
+  "inputs": [
+    {
+      "name": "ORIGINAL_JWT",
+      "description": "Original JWT to tamper."
+    },
+    {
+      "name": "MODE",
+      "description": "Tamper mode: alg-none | kid-inject | strip-sig."
+    }
+  ],
+  "preprocess": "scripts/jwt-tamper.js"
+}

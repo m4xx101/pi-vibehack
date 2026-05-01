@@ -1,0 +1,22 @@
+{
+  "name": "csrf-replay",
+  "description": "Replay a state-changing POST with a captured CSRF token and session cookie.",
+  "method": "POST",
+  "url": "{{env.TARGET_URL}}",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Cookie": "session={{env.SESSION}}"
+  },
+  "body": "csrf_token={{env.csrf_token}}&action={{env.ACTION}}",
+  "inputs": [
+    {
+      "name": "csrf_token",
+      "description": "CSRF token captured from a prior authenticated request.",
+      "sendToAgent": true
+    },
+    {
+      "name": "SESSION",
+      "description": "Session cookie value."
+    }
+  ]
+}
