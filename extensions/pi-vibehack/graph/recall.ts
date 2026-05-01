@@ -3,6 +3,14 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { vibehackRoot, engagementDir, activeEngagementId } from "../lib/engagement.ts";
 
+// Cross-platform spawn options. On Windows, graphify is typically distributed
+// as a .cmd shim (npm bin or Python entry point); Node's child_process.spawn
+// without shell:true cannot direct-call .cmd files and ENOENTs. shell:true
+// goes through cmd.exe which resolves the shim. On POSIX, shell:false avoids
+// shell-injection surface — graphify args are not user-controlled in our
+// code paths but we keep the cleaner default.
+const SPAWN_OPTS = process.platform === "win32" ? { shell: true } : {};
+
 export interface Subgraph {
   source: "engagement" | "global" | "fallback-grep";
   entities: { id: string; kind: string; label: string }[];
@@ -13,7 +21,7 @@ export interface Subgraph {
 async function hasGraphify(): Promise<boolean> {
   return await new Promise((resolve) => {
     try {
-      const c = spawn("graphify", ["--version"], { stdio: "ignore" });
+      const c = spawn("graphify", ["--version"], { stdio: "ignore", ...SPAWN_OPTS });
       c.on("error", () => resolve(false));
       c.on("close", (code) => resolve(code === 0));
     } catch {
@@ -28,10 +36,10 @@ async function graphifyQuery(graphDir: string, query: string): Promise<Subgraph 
       const c = spawn(
         "graphify",
         ["query", "--graph", graphDir, "--format", "json", query],
-        { stdio: ["ignore", "pipe", "pipe"] },
+        { stdio: ["ignore", "pipe", "pipe"], ...SPAWN_OPTS },
       );
       let stdout = "";
-      c.stdout.on("data", (d) => { stdout += d.toString(); });
+      c.stdout?.on("data", (d) => { stdout += d.toString(); });
       c.on("close", (code) => {
         if (code !== 0) return resolve(null);
         try {
@@ -96,7 +104,7 @@ export async function recall(query: string): Promise<Subgraph[]> {
 export async function triggerGraphifyUpdate(targetDir: string): Promise<void> {
   return await new Promise((resolve) => {
     try {
-      const c = spawn("graphify", ["update", targetDir], { stdio: "ignore" });
+      const c = spawn("graphify", ["update", targetDir], { stdio: "ignore", ...SPAWN_OPTS });
       c.on("close", () => resolve());
       c.on("error", () => resolve());
     } catch {
