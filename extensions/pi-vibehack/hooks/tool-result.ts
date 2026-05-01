@@ -100,6 +100,36 @@ export function registerToolResultHook(pi: any) {
         await mirrorAuthProfile(out.auth_state_changes);
       }
     } catch {}
+
+    // Wire #1: per-leaf Reporter auto-spawn on confirm
+    try {
+      if (event.toolName === "vibehack_confirm" && event.output) {
+        const out: any = typeof event.output === "string" ? null : event.output;
+        const node_id = out?.details?.node_id ?? out?.node_id;
+        if (node_id) {
+          const { spawnReporter } = await import("../lib/reporter-spawn.ts");
+          const { promises: fs2 } = await import("node:fs");
+          const { join: j2, dirname: d2 } = await import("node:path");
+          const { fileURLToPath: f2 } = await import("node:url");
+          const HERE = d2(f2(import.meta.url));
+          const sysBody = await fs2.readFile(j2(HERE, "..", "..", "..", "subagents", "vibehack-reporter.md"), "utf8").catch(() => "");
+          spawnReporter({ engagement_id: eng, mode: "per-leaf", node_id, engagement_dir: dir } as any, sysBody)
+            .catch((e: any) => fs2.appendFile(j2(dir, "audit.log"), `[${nowIso()}] reporter-per-leaf-fail node=${node_id} err=${e.message}\n`, "utf8").catch(() => {}));
+        }
+      }
+    } catch {}
+
+    // Wire #2: auto-handoff for the next subprocess from any subagent-style tool result
+    try {
+      const struct = (event as any).structuredOutput ?? (event as any).output?.structured;
+      const looksLikeOperator = struct && typeof struct === "object" && "outcome" in struct && "handoff_summary" in struct;
+      if (looksLikeOperator) {
+        const { buildHandoff } = await import("../lib/handoff.ts");
+        const { setPendingHandoff } = await import("../lib/pending-handoff.ts");
+        const body = buildHandoff(struct as any);
+        if (body) await setPendingHandoff(eng, body);
+      }
+    } catch {}
   });
 }
 

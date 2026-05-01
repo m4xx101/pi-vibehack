@@ -33,6 +33,12 @@ export function registerBeforeAgentStartHook(pi: any) {
       globalAgentsMd = await fs.readFile(join(vibehackRoot(), "AGENTS.md"), "utf8");
     } catch {}
 
+    let handoff = "";
+    if (eng) {
+      const { consumePendingHandoff } = await import("../lib/pending-handoff.ts");
+      handoff = await consumePendingHandoff(eng);
+    }
+
     const gate = getMutationGateMessage();
 
     const blocks: string[] = [];
@@ -40,6 +46,7 @@ export function registerBeforeAgentStartHook(pi: any) {
     if (plannerSys) blocks.push(plannerSys);
     if (globalAgentsMd.trim()) blocks.push(`<pinned_global>\n${globalAgentsMd}\n</pinned_global>`);
     if (agentsMd.trim()) blocks.push(`<pinned_engagement>\n${agentsMd}\n</pinned_engagement>`);
+    if (handoff.trim()) blocks.push(`<handoff_from_prior_subprocess>\n${handoff}\n</handoff_from_prior_subprocess>`);
     if (gate) blocks.push(`<invariant>${gate}</invariant>`);
 
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
