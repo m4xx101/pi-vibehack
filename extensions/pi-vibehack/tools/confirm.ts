@@ -28,9 +28,12 @@ export const confirmTool = {
       metadata: { evidence_refs: params.evidence_refs },
     });
     ctx?.ui?.notify?.(`confirmed ${params.node_id}`, "success");
+    // Note: per-leaf reporter spawn is wired in Phase 27.3 by the tool_result
+    // hook reading the event log directly (event === "confirm"). No flag in
+    // details — single source of truth is the events.jsonl entry just written.
     return {
       content: [{ type: "text", text: `confirmed ${params.node_id}; reporter will run` }],
-      details: { node_id: params.node_id, trigger_reporter: true },
+      details: { node_id: params.node_id },
     };
   },
 };

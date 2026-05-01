@@ -5,7 +5,9 @@ export { evidenceTool } from "./evidence.ts";
 export { deadEndTool } from "./dead-end.ts";
 export { proposeChainTool } from "./propose-chain.ts";
 export { proposeSpecialistTool } from "./propose-specialist.ts";
-// recall.ts in Phase 12
+// recallTool added in Phase 12 (graphify-backed); declared in PLANNER_TOOL_NAMES
+// below as a forward reference for prompt enumeration only — do not iterate this
+// list to resolve tool objects until Phase 12 lands.
 
 export const PLANNER_TOOL_NAMES = [
   "vibehack_expand",
@@ -15,11 +17,25 @@ export const PLANNER_TOOL_NAMES = [
   "vibehack_dead_end",
   "vibehack_propose_chain",
   "vibehack_propose_specialist",
-  "vibehack_recall", // wired in Phase 12
+  "vibehack_recall", // forward reference; tool object created in Phase 12
 ];
 
+// Tools whose call genuinely advances the tree (state-mutating). Phase 5's
+// hypothesis-or-die invariant requires at least one of these per turn —
+// proposals do NOT count as mutations because they stage operator-gated
+// changes that may never apply.
 export const HYPOTHESIS_MUTATING_TOOLS = new Set([
-  "vibehack_expand", "vibehack_prune", "vibehack_confirm",
-  "vibehack_evidence", "vibehack_dead_end",
-  "vibehack_propose_chain", "vibehack_propose_specialist",
+  "vibehack_expand",
+  "vibehack_prune",
+  "vibehack_confirm",
+  "vibehack_evidence",
+  "vibehack_dead_end",
+]);
+
+// Operator-gated proposals. Distinct from mutations: they don't satisfy the
+// hypothesis-or-die invariant on their own (a turn that only proposes a chain
+// without expanding/pruning/etc. has not advanced the tree).
+export const PROPOSAL_TOOLS = new Set([
+  "vibehack_propose_chain",
+  "vibehack_propose_specialist",
 ]);

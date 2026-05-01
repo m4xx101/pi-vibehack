@@ -30,8 +30,24 @@ export async function setActiveEngagement(id: string | null): Promise<void> {
   }
 }
 
+/**
+ * Convert a free-form target string into a filesystem-safe slug.
+ *
+ * - Folds Unicode NFKD diacritics so `"café"` slugs to `"cafe"` instead of `"caf"`.
+ * - Lowercases, replaces any run of non-`[a-z0-9]` with `-`, trims leading/trailing `-`.
+ * - Caps at 60 chars and re-trims trailing `-` in case the cut landed on a separator.
+ * - Returns `"untargeted"` for empty/all-symbol input rather than empty string,
+ *   so engagement ids never end with a bare trailing hyphen.
+ */
 export function slugify(target: string): string {
-  return target.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+  const folded = target.normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  const slug = folded
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60)
+    .replace(/-$/, "");
+  return slug || "untargeted";
 }
 
 export function newEngagementId(target: string): string {
