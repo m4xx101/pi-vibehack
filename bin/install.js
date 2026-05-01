@@ -63,6 +63,10 @@ async function cmdInstall(args) {
   await ensureDataDir(dataDir);
   await writeProfile(dataDir, profile);
 
+  const { rewritePromptsForProfile } = await import("./lib/rewrite-prompts.js");
+  await rewritePromptsForProfile(profile);
+  console.log(`✓ prompt frontmatter rewritten for profile=${profile.profile}`);
+
   console.log(`✓ ${PKG.name}@${PKG.version} installed`);
   console.log(`✓ settings.json patched: ${settingsPath}`);
   console.log(`✓ data dir: ${dataDir}`);
