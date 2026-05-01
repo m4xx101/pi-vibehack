@@ -2,9 +2,18 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { addPackage, removePackage } from "./lib/settings.js";
 import { resolveProfile } from "./lib/profile.js";
 import { vibehackDir, ensureDataDir, writeProfile } from "./lib/data-dir.js";
+
+async function verifyPiInstalled() {
+  return await new Promise((resolve) => {
+    const c = spawn(process.platform === "win32" ? "where" : "which", ["pi"], { stdio: "ignore" });
+    c.on("error", () => resolve(false));
+    c.on("close", (code) => resolve(code === 0));
+  });
+}
 
 const PKG = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -31,6 +40,12 @@ function resolveSettingsPath(args) {
 }
 
 async function cmdInstall(args) {
+  if (!(await verifyPiInstalled())) {
+    console.error("✗ pi (pi-mono) is not on PATH.");
+    console.error("  Install: npm i -g @mariozechner/pi-coding-agent");
+    console.error("  Then re-run this installer.");
+    process.exit(2);
+  }
   const settingsPath = resolveSettingsPath(args);
 
   const profile = resolveProfile({
@@ -57,6 +72,9 @@ async function cmdInstall(args) {
   console.log(`💡 install pi-super-curl for HTTP/auth power-ups: npm i -g pi-super-curl`);
   console.log(`💡 install surf-cli for browser automation: npm i -g surf-cli`);
   console.log(`Restart pi or /reload. Run /vibehack <target> to start.`);
+  console.log(`\n⚠️  AUTHORIZED TESTING ONLY.`);
+  console.log(`   The operator is responsible for authorization.`);
+  console.log(`   Do not use against systems you do not own or have explicit written permission to test.\n`);
 }
 
 async function cmdUninstall(args) {

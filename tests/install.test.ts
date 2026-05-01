@@ -135,3 +135,16 @@ describe("data dir bootstrap", () => {
     } finally { console.warn = orig; }
   });
 });
+
+import { spawnSync } from "node:child_process";
+
+describe("install.js — verify pi present", () => {
+  it("exits non-zero with a clear hint when pi is not on PATH", () => {
+    const r = spawnSync(process.execPath, ["bin/install.js", "install"], {
+      env: { ...process.env, PATH: "" },
+      encoding: "utf8",
+    });
+    expect(r.status).not.toBe(0);
+    expect((r.stderr ?? "") + (r.stdout ?? "")).toMatch(/pi.*not on PATH|pi-mono/i);
+  });
+});
