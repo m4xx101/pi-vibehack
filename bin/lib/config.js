@@ -26,15 +26,6 @@ export function defaultConfig(profile = "hybrid") {
   };
 }
 
-async function loadYaml() {
-  try {
-    const mod = await import("yaml");
-    return mod.default ?? mod;
-  } catch {
-    return null;
-  }
-}
-
 // Synchronous yaml load — used by readConfig/writeConfig which are sync APIs.
 // We use createRequire to get a CJS require handle so we can sync-import yaml.
 import { createRequire } from "node:module";
