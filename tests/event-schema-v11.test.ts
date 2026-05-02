@@ -6,7 +6,8 @@ describe("v1.1 event types", () => {
   describe("verification_pass", () => {
     it("validates a canonical verification_pass event", () => {
       const e = {
-        type: "verification_pass",
+        event: "verification_pass",
+        engagement_id: "eng-1",
         node_id: "n1",
         kind: "DOM-XSS",
         verifier: "browser-verifier",
@@ -16,23 +17,32 @@ describe("v1.1 event types", () => {
       expect(Value.Check(EventSchema, e)).toBe(true);
     });
     it("rejects missing evidence_ref", () => {
-      const e = { type: "verification_pass", node_id: "n1", kind: "DOM-XSS", verifier: "browser-verifier", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "verification_pass", engagement_id: "eng-1", node_id: "n1", kind: "DOM-XSS", verifier: "browser-verifier", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
     it("rejects bare-date timestamp (strict ISO 8601 with TZ)", () => {
-      const e = { type: "verification_pass", node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y", ts: "2026-05-02" };
+      const e = { event: "verification_pass", engagement_id: "eng-1", node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y", ts: "2026-05-02" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
     it("rejects timestamp without timezone", () => {
-      const e = { type: "verification_pass", node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y", ts: "2026-05-02T10:00:00" };
+      const e = { event: "verification_pass", engagement_id: "eng-1", node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y", ts: "2026-05-02T10:00:00" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
     it("rejects extra properties (additionalProperties: false)", () => {
       const e = {
-        type: "verification_pass",
+        event: "verification_pass",
+        engagement_id: "eng-1",
         node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y",
         ts: "2026-05-02T10:00:00.000Z",
         extraneous: "boom",
+      };
+      expect(Value.Check(EventSchema, e)).toBe(false);
+    });
+    it("rejects verification_pass missing engagement_id", () => {
+      const e = {
+        event: "verification_pass",
+        node_id: "n1", kind: "DOM-XSS", verifier: "x", evidence_ref: "y",
+        ts: "2026-05-02T10:00:00.000Z",
       };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
@@ -41,7 +51,8 @@ describe("v1.1 event types", () => {
   describe("verification_fail", () => {
     it("validates with reason field", () => {
       const e = {
-        type: "verification_fail",
+        event: "verification_fail",
+        engagement_id: "eng-1",
         node_id: "n1",
         kind: "DOM-XSS",
         verifier: "browser-verifier",
@@ -51,11 +62,11 @@ describe("v1.1 event types", () => {
       expect(Value.Check(EventSchema, e)).toBe(true);
     });
     it("rejects missing reason", () => {
-      const e = { type: "verification_fail", node_id: "n1", kind: "DOM-XSS", verifier: "x", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "verification_fail", engagement_id: "eng-1", node_id: "n1", kind: "DOM-XSS", verifier: "x", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
     it("rejects extras", () => {
-      const e = { type: "verification_fail", node_id: "n1", kind: "x", verifier: "x", reason: "x", ts: "2026-05-02T10:00:00.000Z", extra: "boom" };
+      const e = { event: "verification_fail", engagement_id: "eng-1", node_id: "n1", kind: "x", verifier: "x", reason: "x", ts: "2026-05-02T10:00:00.000Z", extra: "boom" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
   });
@@ -63,7 +74,8 @@ describe("v1.1 event types", () => {
   describe("verification_advisory", () => {
     it("validates with message field", () => {
       const e = {
-        type: "verification_advisory",
+        event: "verification_advisory",
+        engagement_id: "eng-1",
         node_id: "n1",
         kind: "DOM-XSS",
         message: "browser verification recommended",
@@ -72,7 +84,7 @@ describe("v1.1 event types", () => {
       expect(Value.Check(EventSchema, e)).toBe(true);
     });
     it("rejects missing message", () => {
-      const e = { type: "verification_advisory", node_id: "n1", kind: "DOM-XSS", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "verification_advisory", engagement_id: "eng-1", node_id: "n1", kind: "DOM-XSS", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
   });
@@ -80,7 +92,8 @@ describe("v1.1 event types", () => {
   describe("canary_planted", () => {
     it("validates filesystem canary", () => {
       const e = {
-        type: "canary_planted",
+        event: "canary_planted",
+        engagement_id: "eng-1",
         node_id: "n1",
         canary_kind: "filesystem",
         uuid: "abc-123-uuid",
@@ -92,7 +105,8 @@ describe("v1.1 event types", () => {
 
     it("validates http-callback canary with optional callback_url", () => {
       const e = {
-        type: "canary_planted",
+        event: "canary_planted",
+        engagement_id: "eng-1",
         node_id: "n1",
         canary_kind: "http-callback",
         uuid: "abc-123",
@@ -104,22 +118,22 @@ describe("v1.1 event types", () => {
     });
 
     it("validates dns canary kind", () => {
-      const e = { type: "canary_planted", node_id: "n1", canary_kind: "dns", uuid: "abc", ref: "abc.collector.example", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "canary_planted", engagement_id: "eng-1", node_id: "n1", canary_kind: "dns", uuid: "abc", ref: "abc.collector.example", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(true);
     });
 
     it("validates blind-oob canary kind", () => {
-      const e = { type: "canary_planted", node_id: "n1", canary_kind: "blind-oob", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "canary_planted", engagement_id: "eng-1", node_id: "n1", canary_kind: "blind-oob", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(true);
     });
 
     it("rejects unknown canary_kind", () => {
-      const e = { type: "canary_planted", node_id: "n1", canary_kind: "magic-mode", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z" };
+      const e = { event: "canary_planted", engagement_id: "eng-1", node_id: "n1", canary_kind: "magic-mode", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
 
     it("rejects extras", () => {
-      const e = { type: "canary_planted", node_id: "n1", canary_kind: "filesystem", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z", extra: "boom" };
+      const e = { event: "canary_planted", engagement_id: "eng-1", node_id: "n1", canary_kind: "filesystem", uuid: "abc", ref: "x", ts: "2026-05-02T10:00:00.000Z", extra: "boom" };
       expect(Value.Check(EventSchema, e)).toBe(false);
     });
   });

@@ -65,11 +65,12 @@ export const LegacyEventSchema = Type.Object({
   metadata: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 }, { additionalProperties: false });
 
-// v1.1 event types (§3.6, §4.3) — discriminated by the `type` field (distinct from
-// legacy events' `event` field). These are strict per-type schemas; cross-field
+// v1.1 event types (§3.6, §4.3) — share legacy envelope convention: discriminated by
+// `event` field, carry `engagement_id`. These are strict per-type schemas; cross-field
 // invariants belong in validateEvent(), not here.
 export const VerificationPassSchema = Type.Object({
-  type: Type.Literal("verification_pass"),
+  event: Type.Literal("verification_pass"),
+  engagement_id: Type.String(),
   node_id: Type.String(),
   kind: Type.String(),
   verifier: Type.String(),
@@ -78,7 +79,8 @@ export const VerificationPassSchema = Type.Object({
 }, { additionalProperties: false });
 
 export const VerificationFailSchema = Type.Object({
-  type: Type.Literal("verification_fail"),
+  event: Type.Literal("verification_fail"),
+  engagement_id: Type.String(),
   node_id: Type.String(),
   kind: Type.String(),
   verifier: Type.String(),
@@ -87,7 +89,8 @@ export const VerificationFailSchema = Type.Object({
 }, { additionalProperties: false });
 
 export const VerificationAdvisorySchema = Type.Object({
-  type: Type.Literal("verification_advisory"),
+  event: Type.Literal("verification_advisory"),
+  engagement_id: Type.String(),
   node_id: Type.String(),
   kind: Type.String(),
   message: Type.String(),
@@ -95,7 +98,8 @@ export const VerificationAdvisorySchema = Type.Object({
 }, { additionalProperties: false });
 
 export const CanaryPlantedSchema = Type.Object({
-  type: Type.Literal("canary_planted"),
+  event: Type.Literal("canary_planted"),
+  engagement_id: Type.String(),
   node_id: Type.String(),
   canary_kind: Type.Union([
     Type.Literal("filesystem"),
