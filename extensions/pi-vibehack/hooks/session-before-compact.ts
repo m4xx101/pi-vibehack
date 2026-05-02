@@ -4,10 +4,12 @@
 // default. Each section is best-effort — any failure aborts the custom summary
 // (pi falls back to its default) rather than blowing up the compact path.
 
-import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
-import { readEvents, appendEvent, nowIso } from "../lib/events.ts";
+import { join } from "node:path";
+import { activeEngagementId, engagementDir, vibehackRoot } from "../lib/engagement.ts";
+import { readEvents, appendEvent, eventsPath, nowIso } from "../lib/events.ts";
 import { foldNodes, type Node } from "../render/tree-md.ts";
 import { distillFromEngagement, appendLesson } from "../lib/lessons.ts";
+import { runReflection } from "../lib/reflection.ts";
 
 export function registerSessionBeforeCompactHook(pi: any) {
   pi.on("session_before_compact", async (_event: any, _ctx: any) => {
@@ -31,6 +33,18 @@ export function registerSessionBeforeCompactHook(pi: any) {
             });
           } catch {}
         }
+      } catch {}
+
+      // Best-effort: Layer B reflection — cluster confirmed leaves and write
+      // refined recipes into ~/.pi/agent/vibehack/skills/learned/. Failure
+      // never blocks compaction.
+      try {
+        const learnedDir = join(vibehackRoot(), "skills", "learned");
+        await runReflection({
+          eventsPath: eventsPath(dir),
+          learnedDir,
+          scope: "compact",
+        });
       } catch {}
 
       // Best-effort: build custom summary from current tree state.
