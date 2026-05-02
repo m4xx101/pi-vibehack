@@ -15,7 +15,7 @@ export function registerSessionStartHook(pi: any) {
     try {
       const os = await import("node:os");
       const path = await import("node:path");
-      const { readConfig } = await import("../../../bin/lib/config.js");
+      const { readConfig } = await import("../lib/config-runtime.ts");
       const cfgPath = path.join(os.homedir(), ".pi", "agent", "vibehack", "config.yaml");
       const cfg = readConfig(cfgPath);
       if (cfg) registerProvidersFromConfig(pi, cfg);
