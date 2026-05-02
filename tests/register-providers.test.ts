@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { registerProvidersFromConfig } from "../extensions/pi-vibehack/hooks/register-providers.js";
 
 describe("registerProvidersFromConfig", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("calls pi.registerProvider once per configured provider", () => {
     const cfg = {
       providers: {
@@ -13,7 +17,7 @@ describe("registerProvidersFromConfig", () => {
         },
       },
     };
-    process.env.LOCAL_API_KEY = "sk-local";
+    vi.stubEnv("LOCAL_API_KEY", "sk-local");
     const fakePi = { registerProvider: vi.fn() };
     registerProvidersFromConfig(fakePi, cfg);
     expect(fakePi.registerProvider).toHaveBeenCalledOnce();
@@ -35,7 +39,7 @@ describe("registerProvidersFromConfig", () => {
         good: { baseUrl: "y", apiKey: "GOOD_ENV", models: [] },
       },
     };
-    process.env.GOOD_ENV = "ok";
+    vi.stubEnv("GOOD_ENV", "ok");
     const fakePi = {
       registerProvider: vi.fn((arg: any) => { if (!arg.apiKey) throw new Error("bad"); }),
     };
