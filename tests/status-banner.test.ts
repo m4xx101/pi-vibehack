@@ -23,7 +23,7 @@ describe("status-banner v1.0.1 cost telemetry", () => {
       events, treeNodes: 1, confirmed: 0,
       config: { ui: { banner: { show_last_turn_cost: true, show_engagement_cost: true, cost_warn_threshold_usd: 0.5 } } },
     });
-    expect(banner).toMatch(/\[31m.*\$0\.75/);
+    expect(banner).toMatch(/\x1b\[31m.*\$0\.75.*\x1b\[0m/);
   });
 
   it("does NOT color when under threshold", () => {
@@ -32,8 +32,36 @@ describe("status-banner v1.0.1 cost telemetry", () => {
       events, treeNodes: 1, confirmed: 0,
       config: { ui: { banner: { show_last_turn_cost: true, show_engagement_cost: true, cost_warn_threshold_usd: 0.5 } } },
     });
-    expect(banner).not.toMatch(/\[31m/);
+    expect(banner).not.toMatch(/\x1b\[31m/);
     expect(banner).toContain("⚡ $0.25");
+  });
+
+  it("does NOT color when cost equals threshold (strict greater-than)", () => {
+    const events = [{ type: "tool_result", node_id: "n1", cost_usd: 0.5, ts: "2026-05-02T10:00:00.000Z" }];
+    const banner = renderStatusBanner({
+      events, treeNodes: 1, confirmed: 0,
+      config: { ui: { banner: { show_last_turn_cost: true, show_engagement_cost: true, cost_warn_threshold_usd: 0.5 } } },
+    });
+    expect(banner).not.toMatch(/\x1b\[31m/);
+    expect(banner).toContain("⚡ $0.50");
+  });
+
+  it("with zero events, falls back to bare banner (no ⚡ or 💰)", () => {
+    const banner = renderStatusBanner({ events: [], treeNodes: 0, confirmed: 0 });
+    expect(banner).not.toContain("⚡");
+    expect(banner).not.toContain("💰");
+    expect(banner).toContain("🌳 0 nodes");
+    expect(banner).toContain("/vibehack-tree");
+  });
+
+  it("with events but none carrying cost_usd, omits both cost segments", () => {
+    const events = [
+      { type: "tool_result", node_id: "n1", ts: "2026-05-02T10:00:00.000Z" },
+      { type: "tool_result", node_id: "n2", ts: "2026-05-02T10:01:00.000Z" },
+    ];
+    const banner = renderStatusBanner({ events, treeNodes: 2, confirmed: 0 });
+    expect(banner).not.toContain("⚡");
+    expect(banner).not.toContain("💰");
   });
 
   it("hides last-turn cost when show_last_turn_cost: false", () => {

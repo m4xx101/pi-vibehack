@@ -27,6 +27,7 @@ export function renderStatusBanner(opts: BannerOpts): string {
   const showEng = banner?.show_engagement_cost ?? true;
   const threshold = banner?.cost_warn_threshold_usd ?? 0.5;
 
+  // Accept both `type` (spec) and `event` (legacy on-disk JSONL) until events.jsonl shape unifies.
   const costs = opts.events.filter(
     (e) => (e.type === "tool_result" || e.event === "tool_result") && typeof e.cost_usd === "number",
   );
@@ -38,7 +39,7 @@ export function renderStatusBanner(opts: BannerOpts): string {
   if (showLast && costs.length > 0) {
     const formatted = `$${lastTurnCost.toFixed(2)}`;
     const segment = `⚡ ${formatted} (last turn)`;
-    parts.push(lastTurnCost > threshold ? `[31m${segment}[0m` : segment);
+    parts.push(lastTurnCost > threshold ? `\x1b[31m${segment}\x1b[0m` : segment);
   }
   if (showEng && costs.length > 0) {
     parts.push(`💰 $${engagementCost.toFixed(2)} (eng)`);
