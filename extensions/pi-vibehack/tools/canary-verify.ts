@@ -2,47 +2,59 @@
 // appropriate for the vuln class and emits a canary_planted event so the
 // Planner can incorporate the secret/URL into the next_test instruction.
 //
-// Tool shape note: this tool uses a plain JSONSchema + handler(args, ctx)
-// signature distinct from the older Typebox/execute tools (confirm.ts et al.).
-// The Planner host adapts both. The plain-schema shape is what Phase 12 spec §3.5
-// prescribes and what the host harness already wires for the verifier path.
+// Tool shape: matches the canonical Typebox `parameters` + `execute(callId,
+// params, signal, onUpdate, ctx)` pattern used by confirm.ts / expand.ts /
+// recall.ts. The `ctx` argument carries engagement metadata (engagementDir,
+// eventsPath, engagement_id, pinnedCollector); the Planner host populates
+// these for the verifier path.
 //
 // Side-effect classification: this tool is NEITHER hypothesis-mutating NOR a
 // proposal. It plants a marker; the marker's *retrieval* is what eventually
 // drives a verification_pass event via the tool_result hook. So it is added to
 // PLANNER_TOOL_NAMES but not to HYPOTHESIS_MUTATING_TOOLS or PROPOSAL_TOOLS.
 
+import { Type } from "@sinclair/typebox";
 import { plantFileCanary, plantHttpCallbackCanary } from "../lib/canary.ts";
 import * as fs from "fs";
 import * as crypto from "crypto";
 
+export const canaryVerifySchema = Type.Object({
+  node_id: Type.String(),
+  kind: Type.Union([
+    Type.Literal("RCE"),
+    Type.Literal("AFR"),
+    Type.Literal("SSRF"),
+    Type.Literal("blind-OOB"),
+    Type.Literal("open-redirect"),
+    Type.Literal("DNS"),
+  ]),
+});
+
 export const canaryVerifyTool = {
   name: "vibehack_canary_verify",
-  schema: {
-    type: "object" as const,
-    additionalProperties: false,
-    required: ["node_id", "kind"],
-    properties: {
-      node_id: { type: "string" as const },
-      kind: {
-        type: "string" as const,
-        enum: ["RCE", "AFR", "SSRF", "blind-OOB", "open-redirect", "DNS"] as const,
-      },
-    },
-  },
-  async handler(
-    args: { node_id: string; kind: string },
-    ctx: {
+  label: "Plant verification canary",
+  description:
+    "Plant a canary appropriate for the vuln class and emit canary_planted. " +
+    "OOB classes (DNS, blind-OOB) require an operator-pinned collector.",
+  parameters: canaryVerifySchema,
+
+  async execute(
+    _callId: string,
+    params: { node_id: string; kind: string },
+    _signal?: any,
+    _onUpdate?: any,
+    ctx?: {
       engagementDir: string;
       eventsPath: string;
       engagement_id: string;
       pinnedCollector?: string | null;
     },
   ): Promise<any> {
+    if (!ctx) throw new Error("vibehack_canary_verify requires ctx");
     const ts = new Date().toISOString();
 
     // OOB classes (DNS / blind-OOB) require operator-pinned collector.
-    if (args.kind === "DNS" || args.kind === "blind-OOB") {
+    if (params.kind === "DNS" || params.kind === "blind-OOB") {
       if (!ctx.pinnedCollector) {
         return {
           error:
@@ -57,14 +69,14 @@ export const canaryVerifyTool = {
         return { error: `invalid pinnedCollector URL: ${ctx.pinnedCollector}` };
       }
       const subdomain = `${uuid}.${host}`;
-      const canaryKind = args.kind === "DNS" ? "dns" : "blind-oob";
+      const canaryKind = params.kind === "DNS" ? "dns" : "blind-oob";
 
       fs.appendFileSync(
         ctx.eventsPath,
         JSON.stringify({
           event: "canary_planted",
           engagement_id: ctx.engagement_id,
-          node_id: args.node_id,
+          node_id: params.node_id,
           canary_kind: canaryKind,
           uuid,
           ref: subdomain,
@@ -76,14 +88,14 @@ export const canaryVerifyTool = {
     }
 
     // Filesystem classes (RCE, AFR).
-    if (args.kind === "RCE" || args.kind === "AFR") {
-      const c = plantFileCanary(ctx.engagementDir, args.kind);
+    if (params.kind === "RCE" || params.kind === "AFR") {
+      const c = plantFileCanary(ctx.engagementDir, params.kind);
       fs.appendFileSync(
         ctx.eventsPath,
         JSON.stringify({
           event: "canary_planted",
           engagement_id: ctx.engagement_id,
-          node_id: args.node_id,
+          node_id: params.node_id,
           canary_kind: "filesystem",
           uuid: c.uuid,
           ref: c.ref,
@@ -100,7 +112,7 @@ export const canaryVerifyTool = {
       JSON.stringify({
         event: "canary_planted",
         engagement_id: ctx.engagement_id,
-        node_id: args.node_id,
+        node_id: params.node_id,
         canary_kind: "http-callback",
         uuid: c.uuid,
         ref: c.callback_url,

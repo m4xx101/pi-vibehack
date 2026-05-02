@@ -9,14 +9,21 @@ afterEach(async () => {
   await _cleanupAllListeners();
 });
 
+// Convenience wrapper: tests don't care about callId/signal/onUpdate.
+const run = (args: any, ctx: any) =>
+  canaryVerifyTool.execute("t1", args, undefined, undefined, ctx);
+
 describe("vibehack_canary_verify tool", () => {
-  it("schema specifies node_id (string) and kind (enum of 6)", () => {
-    expect(canaryVerifyTool.schema.properties.node_id).toBeDefined();
-    expect(canaryVerifyTool.schema.properties.kind.enum).toEqual([
-      "RCE", "AFR", "SSRF", "blind-OOB", "open-redirect", "DNS",
-    ]);
-    expect(canaryVerifyTool.schema.additionalProperties).toBe(false);
-    expect(canaryVerifyTool.schema.required).toEqual(["node_id", "kind"]);
+  it("parameters specify node_id (string) and kind (union of 6)", () => {
+    const params: any = canaryVerifyTool.parameters;
+    expect(params.properties.node_id).toBeDefined();
+    expect(params.properties.kind).toBeDefined();
+    // Typebox Union → anyOf of literals; collect the literal const values.
+    const literals = (params.properties.kind.anyOf ?? []).map((s: any) => s.const);
+    expect(literals.sort()).toEqual(
+      ["AFR", "DNS", "RCE", "SSRF", "blind-OOB", "open-redirect"].sort(),
+    );
+    expect(params.required).toEqual(["node_id", "kind"]);
   });
 
   it("tool name is vibehack_canary_verify", () => {
@@ -28,7 +35,7 @@ describe("vibehack_canary_verify tool", () => {
     try {
       const eventsPath = path.join(tmp, "events.jsonl");
       fs.writeFileSync(eventsPath, "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "RCE" },
         { engagementDir: tmp, eventsPath, engagement_id: "eng-1" },
       );
@@ -58,7 +65,7 @@ describe("vibehack_canary_verify tool", () => {
     try {
       const eventsPath = path.join(tmp, "events.jsonl");
       fs.writeFileSync(eventsPath, "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "AFR" },
         { engagementDir: tmp, eventsPath, engagement_id: "eng-1" },
       );
@@ -73,7 +80,7 @@ describe("vibehack_canary_verify tool", () => {
     try {
       const eventsPath = path.join(tmp, "events.jsonl");
       fs.writeFileSync(eventsPath, "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "SSRF" },
         { engagementDir: tmp, eventsPath, engagement_id: "eng-1" },
       );
@@ -89,7 +96,7 @@ describe("vibehack_canary_verify tool", () => {
     try {
       const eventsPath = path.join(tmp, "events.jsonl");
       fs.writeFileSync(eventsPath, "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "open-redirect" },
         { engagementDir: tmp, eventsPath, engagement_id: "eng-1" },
       );
@@ -103,7 +110,7 @@ describe("vibehack_canary_verify tool", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-cv-"));
     try {
       fs.writeFileSync(path.join(tmp, "events.jsonl"), "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "DNS" },
         {
           engagementDir: tmp,
@@ -122,7 +129,7 @@ describe("vibehack_canary_verify tool", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-cv-"));
     try {
       fs.writeFileSync(path.join(tmp, "events.jsonl"), "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "DNS" },
         {
           engagementDir: tmp,
@@ -149,7 +156,7 @@ describe("vibehack_canary_verify tool", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-cv-"));
     try {
       fs.writeFileSync(path.join(tmp, "events.jsonl"), "");
-      const result = await canaryVerifyTool.handler(
+      const result = await run(
         { node_id: "n1", kind: "blind-OOB" },
         {
           engagementDir: tmp,
