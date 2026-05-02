@@ -37,4 +37,23 @@ describe("config.js", () => {
     const migrated = migrateConfig(old);
     expect(migrated.version).toBeGreaterThanOrEqual(1);
   });
+
+  it("migrateConfig fills models.fallbacks when given partial models", () => {
+    const partial = { models: { planner: "x" } };
+    const migrated = migrateConfig(partial);
+    expect(migrated.models.planner).toBe("x");
+    expect(migrated.models.fallbacks).toBeDefined();
+    expect(migrated.models.fallbacks.planner).toEqual([]);
+    expect(migrated.models.fallbacks.operator).toEqual([]);
+    expect(migrated.models.fallbacks.reporter).toEqual([]);
+    expect(migrated.models.per_prompt).toEqual({});
+  });
+
+  it("migrateConfig fills ui.banner.cost_warn_threshold_usd when given empty ui", () => {
+    const partial = { ui: {} };
+    const migrated = migrateConfig(partial);
+    expect(migrated.ui.banner).toBeDefined();
+    expect(migrated.ui.banner.cost_warn_threshold_usd).toBe(0.5);
+    expect(migrated.ui.banner.show_last_turn_cost).toBe(true);
+  });
 });

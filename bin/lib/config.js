@@ -65,9 +65,32 @@ export function writeConfig(filePath, obj) {
 
 export function migrateConfig(obj) {
   if (!obj || typeof obj !== "object") return defaultConfig();
+  const def = defaultConfig();
   if (!obj.version) obj.version = CURRENT_VERSION;
-  if (!obj.models) obj.models = defaultConfig().models;
-  if (!obj.auto_install) obj.auto_install = defaultConfig().auto_install;
-  if (!obj.ui) obj.ui = defaultConfig().ui;
+
+  // models: shallow-merge top-level keys, then deep-merge nested objects.
+  if (!obj.models) {
+    obj.models = def.models;
+  } else {
+    obj.models = { ...def.models, ...obj.models };
+    obj.models.fallbacks = { ...def.models.fallbacks, ...(obj.models.fallbacks || {}) };
+    obj.models.per_prompt = { ...def.models.per_prompt, ...(obj.models.per_prompt || {}) };
+  }
+
+  // auto_install: shallow-merge.
+  if (!obj.auto_install) {
+    obj.auto_install = def.auto_install;
+  } else {
+    obj.auto_install = { ...def.auto_install, ...obj.auto_install };
+  }
+
+  // ui: shallow-merge top-level, deep-merge ui.banner.
+  if (!obj.ui) {
+    obj.ui = def.ui;
+  } else {
+    obj.ui = { ...def.ui, ...obj.ui };
+    obj.ui.banner = { ...def.ui.banner, ...(obj.ui.banner || {}) };
+  }
+
   return obj;
 }
