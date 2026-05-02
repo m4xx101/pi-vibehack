@@ -600,6 +600,90 @@ Persona detection: `extensions/pi-vibehack/lib/persona.ts`. Reads pi's active pr
 
 ---
 
+## v1.1 commands
+
+Added in v1.1.0-rc1 alongside the self-evolving harness, Kali auto-discovery, browser verifier, and canary primitives.
+
+### `/vibehack-config sync`
+
+**Syntax:** `/vibehack-config sync`
+**Purpose:** Regenerate slash-command frontmatter (`model:` / `thinking:`) from `~/.pi/agent/vibehack/config.yaml` without clobbering hand-edited prompt bodies. *(Landed in v1.0.1; documented here for completeness.)*
+
+**Side effects:** Re-writes the YAML frontmatter block of every `prompts/*.md` shipped with the harness. Operator-edited prompt bodies (below the frontmatter) are preserved.
+
+---
+
+### `/vibehack-reflect`
+
+**Syntax:** `/vibehack-reflect`
+**Purpose:** Manually trigger Layer B reflection. Clusters confirmed leaves across recent engagements by stack signature (target type, recipe family, evidence shape) and writes refined recipes to `~/.pi/agent/vibehack/skills/learned/<slug>/SKILL.md`.
+
+**Side effects:**
+- Implementation: `extensions/pi-vibehack/lib/reflection.ts`. Auto-fires on `session_before_compact` and `/vibehack-complete`; manual via this command.
+- Operator-edited recipes (detected by trailing-edit signature) are skipped — never clobbered.
+- Hot-reload requires `/reload` after.
+
+---
+
+### `/vibehack-evolve --bench <name> [--mutate]`
+
+**Syntax:** `/vibehack-evolve --bench example` or `/vibehack-evolve --bench example --mutate`
+**Purpose:** Run a Layer A bench evaluation. Without `--mutate`, runs `bench/<name>/up.sh` → spawns engagement → evaluates against `bench/<name>/expected-findings.yaml` → runs `down.sh` → produces a results report. With `--mutate`, additionally spawns the `vibehack-mutator` subagent in a git worktree; mutation lands only if the target bench passes AND the regression suite stays green.
+
+**Side effects:**
+- Without `--mutate`: writes a results report under the engagement directory; no harness changes.
+- With `--mutate`: creates an isolated worktree, runs the mutator subagent, then merges back only on regression-pass. Path-safe + typebox-validated. Falsified mutations are discarded with the worktree.
+
+---
+
+### `/vibehack-rescan-kali`
+
+**Syntax:** `/vibehack-rescan-kali`
+**Purpose:** Force a re-scan of installed Kali tool capabilities. Refreshes `~/.pi/agent/vibehack/.capabilities.json`.
+
+**Side effects:** Re-runs `detectKaliCapabilities()` from `extensions/pi-vibehack/lib/kali-tools.ts`. Operator-pinned tool overrides are preserved.
+
+---
+
+### `/vibehack-rewind` *(soft — requires pi-rewind-hook)*
+
+**Syntax:** `/vibehack-rewind`
+**Purpose:** Step the Planner state back one mutation. No-op when `pi-rewind-hook` is not installed (banner explains).
+
+---
+
+### `/vibehack-fork` *(soft — requires pi-side-chat)*
+
+**Syntax:** `/vibehack-fork`
+**Purpose:** Branch the current engagement into a side-chat without losing the main thread. No-op when `pi-side-chat` is not installed.
+
+---
+
+## v1.1 Planner tool — `vibehack_canary_verify`
+
+**Signature:** `vibehack_canary_verify(node_id: string, kind: "rce" | "afr" | "ssrf" | "open-redirect" | "blind-oob" | "dns")`
+
+**Purpose:** Plants a deterministic canary appropriate to the vulnerability class, then verifies retrieval. Emits `canary_planted` events; on retrieval the `tool_result` hook emits `verification_pass`.
+
+| `kind` | Primitive | Notes |
+|---|---|---|
+| `rce` | filesystem canary | tempfile written; verified by Operator subprocess reading the same path on the target |
+| `afr` | filesystem canary | arbitrary-file-read; canary content is a unique nonce |
+| `ssrf` | HTTP callback | ephemeral local port (`:0`); listener URL injected into payload |
+| `open-redirect` | HTTP callback | follow chain expected to land on listener URL |
+| `blind-oob` | operator-pinned collector | requires `/vibehack-pin canary-collector: <url>` (e.g. interactsh subdomain) |
+| `dns` | operator-pinned collector | DNS subdomain probe; same OOB collector requirement as blind-oob |
+
+**OOB collector pinning:** `blind-oob` and `dns` kinds require an operator-pinned collector URL. Without it, the tool emits a `verification_advisory` instead. Pin via:
+
+```
+/vibehack-pin canary-collector: https://abcde.oast.online
+```
+
+Cleanup runs at `/vibehack-complete` (best-effort; ephemeral listeners are torn down, filesystem canaries are removed when accessible).
+
+---
+
 ## Command order in normal flow
 
 1. `/vibehack <target>` — start.

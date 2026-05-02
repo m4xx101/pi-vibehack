@@ -113,6 +113,25 @@ Schema enforcement: typebox validation on every `appendEvent`. Strict ISO 8601 w
 5. **Subprocess context isolation.** Operator and Reporter run as `pi --mode json -p --no-session` subprocesses. They never see Planner transcripts. Structured JSON is the only channel; schema-validated before any field reaches the Planner.
 6. **Cost as metadata, never gate.** Every tool/LLM call writes a `cost_usd` event. Status banner totals it. Nothing blocks. Per [ADR-0007](adr/0007-unleashed-scope.md).
 
+## System-prompt assembly order *(updated v1.1)*
+
+The `before_agent_start` hook builds the Planner system prompt in this fixed order:
+
+```
+event.systemPrompt
+└─ persona (CLAUDE / CODEX / GEMINI / LOCAL)
+└─ planner-system.md
+└─ <pinned_global>
+└─ <pinned_engagement>
+└─ <handoff_from_prior_subprocess>
+└─ <operator_steer>
+└─ <invariant>                  (hypothesis-or-die gate message)
+└─ <bounds_advisory>             (depth ≤ 6 / breadth ≤ 8 soft signals)
+└─ <verification_advisory>       ← NEW in v1.1 — browser-class confirms lacking prior verification
+```
+
+The `<recall>` block is **not** assembled in `before_agent_start`; it lives in `before_provider_request` (every Planner LLM call) so the recall is fresh against the most recently emitted hypothesis. `before_agent_start` ends at `<verification_advisory>`. In v1.1 the recall block additionally includes `recipe_hints` synthesized from the operator's `~/.pi/agent/skills/<dir>/SKILL.md` files when the extension detector finds them.
+
 ## The 10× move — graphify recall + `before_provider_request` injection
 
 ```
