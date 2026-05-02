@@ -7,6 +7,9 @@ import { readEvents } from "../lib/events.ts";
 import { foldNodes } from "../render/tree-md.ts";
 import { markNodeDead } from "../dcp-rules/index.ts";
 import { registerProvidersFromConfig } from "./register-providers.ts";
+import { detectInstalledExtensions } from "../lib/extension-detector.ts";
+import { activateIntegrations } from "../integrations/index.ts";
+import { setDetected } from "../lib/detector-cache.ts";
 
 export function registerSessionStartHook(pi: any) {
   pi.on("session_start", async (_event: any, ctx: any) => {
@@ -69,6 +72,40 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack: kali detection skipped (${e?.message ?? String(e)})`,
+        "warn",
+      );
+    }
+
+    // Best-effort: scan for installed pi-extensions + operator skills, activate
+    // documented integrations, and stash the result for <recall> recipe_hints.
+    try {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      const detected = detectInstalledExtensions({
+        globalDir: path.join(os.homedir(), ".pi", "agent", "extensions"),
+        localDir: path.join(process.cwd(), ".pi", "extensions"),
+        skillsDir: path.join(os.homedir(), ".pi", "agent", "skills"),
+      });
+      setDetected(detected);
+      try {
+        activateIntegrations(pi, detected);
+      } catch (e: any) {
+        ctx?.ui?.notify?.(
+          `pi-vibehack: integration activation partial (${e?.message ?? String(e)})`,
+          "warn",
+        );
+      }
+      const extCount = Object.keys(detected.extensions).length;
+      const skillCount = detected.skills.length;
+      if (extCount > 0 || skillCount > 0) {
+        ctx?.ui?.notify?.(
+          `💡 detected ${extCount} pi-extension${extCount !== 1 ? "s" : ""} + ${skillCount} operator skill${skillCount !== 1 ? "s" : ""} (auto-leverage active)`,
+          "info",
+        );
+      }
+    } catch (e: any) {
+      ctx?.ui?.notify?.(
+        `pi-vibehack: extension detection skipped (${e?.message ?? String(e)})`,
         "warn",
       );
     }

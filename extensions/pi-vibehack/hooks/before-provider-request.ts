@@ -2,6 +2,8 @@ import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { readEvents } from "../lib/events.ts";
 import { foldNodes } from "../render/tree-md.ts";
 import { recall } from "../graph/recall.ts";
+import { getDetected } from "../lib/detector-cache.ts";
+import type { SkillInfo } from "../lib/extension-detector.ts";
 
 export function pickOpenHypothesisQuery(events: any[]): string | null {
   const nodes = foldNodes(events);
@@ -17,24 +19,35 @@ export function pickOpenHypothesisQuery(events: any[]): string | null {
   return top.claim;
 }
 
-export function formatRecallBlock(subs: any[]): string {
-  if (!subs || subs.length === 0) return "";
+export function formatRecallBlock(subs: any[], recipeHints?: SkillInfo[]): string {
+  const hasSubs = subs && subs.length > 0;
+  const hasHints = recipeHints && recipeHints.length > 0;
+  if (!hasSubs && !hasHints) return "";
   const lines: string[] = ["<recall>"];
-  lines.push(
-    "Related prior knowledge from cross-engagement graph (auto-injected):",
-  );
-  lines.push("");
-  for (let i = 0; i < subs.length; i++) {
-    const s = subs[i];
-    lines.push(`${i + 1}. From ${s.source}:`);
-    for (const e of (s.entities ?? []).slice(0, 5)) {
-      lines.push(`   - ${e.kind}: ${e.label}`);
+  if (hasSubs) {
+    lines.push(
+      "Related prior knowledge from cross-engagement graph (auto-injected):",
+    );
+    lines.push("");
+    for (let i = 0; i < subs.length; i++) {
+      const s = subs[i];
+      lines.push(`${i + 1}. From ${s.source}:`);
+      for (const e of (s.entities ?? []).slice(0, 5)) {
+        lines.push(`   - ${e.kind}: ${e.label}`);
+      }
+      for (const ed of (s.edges ?? []).slice(0, 5)) {
+        lines.push(`   - ${ed.type}: ${ed.from} → ${ed.to}`);
+      }
+      for (const n of (s.notes ?? []).slice(0, 3)) {
+        lines.push(`   - ${n}`);
+      }
+      lines.push("");
     }
-    for (const ed of (s.edges ?? []).slice(0, 5)) {
-      lines.push(`   - ${ed.type}: ${ed.from} → ${ed.to}`);
-    }
-    for (const n of (s.notes ?? []).slice(0, 3)) {
-      lines.push(`   - ${n}`);
+  }
+  if (hasHints) {
+    lines.push("Operator has these skills available as recipe_hints:");
+    for (const s of recipeHints!) {
+      lines.push(`- \`${s.name}\`${s.description ? ` — ${s.description}` : ""}`);
     }
     lines.push("");
   }
@@ -51,7 +64,9 @@ export function registerBeforeProviderRequestHook(pi: any) {
       const query = pickOpenHypothesisQuery(events);
       if (!query) return;
       const subs = await recall(query);
-      const block = formatRecallBlock(subs);
+      const detected = getDetected();
+      const recipeHints = detected?.skills;
+      const block = formatRecallBlock(subs, recipeHints);
       if (!block) return;
       if (Array.isArray(event?.payload?.messages)) {
         event.payload.messages = [
