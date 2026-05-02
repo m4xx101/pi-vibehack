@@ -85,11 +85,13 @@ main() {
     green "✓ pi-mono installed"
   fi
 
-  yellow "→ installing pi-vibehack ($NPM_PKG)..."
+  yellow "→ installing pi-vibehack ($NPM_PKG@$NPM_TAG)..."
+  # Global install → run the bin directly. More reliable than npx + scoped + tag,
+  # and `--ignore-scripts` retry properly composes via install_with_retry.
+  install_with_retry "pi-vibehack global install" npm install -g "${NPM_PKG}@${NPM_TAG}"
   # Forward any caller-supplied flags (e.g., --profile, --planner, --local).
-  # Use --package + -- to disambiguate: package is @m4xx101/vibeshack but the
-  # exposed bin is `pi-vibehack`, so a bare `npx -y <pkg> install` confuses npx.
-  install_with_retry "pi-vibehack install" npx -y --package="${NPM_PKG}@${NPM_TAG}" -- pi-vibehack install "$@"
+  yellow "→ running pi-vibehack install..."
+  pi-vibehack install "$@"
   echo
 
   green "✓ pi-vibehack installed"
