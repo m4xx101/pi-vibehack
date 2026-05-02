@@ -47,27 +47,70 @@ export function registerSessionStartHook(pi: any) {
         "info",
       );
 
-      // Soft-dep banners
-      const hints: string[] = [];
+      // Soft-dep handling: batch auto-install when enabled, else legacy advisory banners.
+      let autoInstallEnabled = false;
       try {
-        const { detectScurl } = await import("../lib/scurl-bridge.ts");
-        if (!(await detectScurl())) hints.push("💡 install pi-super-curl: `npm i -g pi-super-curl`");
+        const os = await import("node:os");
+        const path = await import("node:path");
+        const { readConfig } = await import("../lib/config-runtime.ts");
+        const cfgPath = path.join(os.homedir(), ".pi", "agent", "vibehack", "config.yaml");
+        const cfg = readConfig(cfgPath);
+        autoInstallEnabled = cfg?.auto_install?.enabled === true;
       } catch {}
-      try {
-        const { detectBrowserBackend } = await import("../lib/browser-bridge.ts");
-        if ((await detectBrowserBackend()) === "none") hints.push("💡 install surf-cli or use playwright-cli: `npm i -g surf-cli`");
-      } catch {}
-      try {
-        const { spawn } = await import("node:child_process");
-        const SHELL_OPT = process.platform === "win32" ? { shell: true } : {};
-        const ok = await new Promise<boolean>((resolve) => {
-          const c = spawn("graphify", ["--version"], { stdio: "ignore", ...SHELL_OPT });
-          c.on("error", () => resolve(false));
-          c.on("close", (code) => resolve(code === 0));
-        });
-        if (!ok) hints.push("💡 install graphify for cross-engagement recall (falling back to grep)");
-      } catch {}
-      for (const h of hints) ctx?.ui?.notify?.(h, "info");
+
+      if (autoInstallEnabled) {
+        try {
+          const { detectMissingSoftDeps, promptInstall } = await import("../lib/soft-dep-installer.ts");
+          const missing = detectMissingSoftDeps();
+          if (missing.length > 0) {
+            // pi exposes a boolean ctx.ui.confirm(question, detail) — no free-text askUser.
+            // Adapt: confirm() === true ⇒ "y" (yes-all); false ⇒ "n" (decline-all, fallbacks).
+            const confirmFn = typeof ctx?.ui?.confirm === "function" ? ctx.ui.confirm : null;
+            if (confirmFn) {
+              const list = missing.map(d => d.name).join(", ");
+              const ask = async (_q: string) => {
+                const yes = await confirmFn(
+                  `Install missing soft deps via npm -g? (${list})`,
+                  "Decline to use built-in fallback chains.",
+                );
+                return yes ? "y" : "n";
+              };
+              const result = await promptInstall(missing, { ask });
+              if (result.installed.length > 0) ctx?.ui?.notify?.(`✓ installed: ${result.installed.join(", ")}`, "info");
+              if (result.declined.length > 0) ctx?.ui?.notify?.(`💡 fallbacks active for: ${result.declined.join(", ")}`, "info");
+            } else {
+              ctx?.ui?.notify?.(
+                `💡 missing soft deps: ${missing.map(d => d.name).join(", ")} (auto-install requires interactive session)`,
+                "info",
+              );
+            }
+          }
+        } catch (e: any) {
+          ctx?.ui?.notify?.(`pi-vibehack: soft-dep prompt failed: ${e?.message ?? String(e)}`, "warn");
+        }
+      } else {
+        // Legacy advisory banners (auto_install disabled or unset).
+        const hints: string[] = [];
+        try {
+          const { detectScurl } = await import("../lib/scurl-bridge.ts");
+          if (!(await detectScurl())) hints.push("💡 install pi-super-curl: `npm i -g pi-super-curl`");
+        } catch {}
+        try {
+          const { detectBrowserBackend } = await import("../lib/browser-bridge.ts");
+          if ((await detectBrowserBackend()) === "none") hints.push("💡 install surf-cli or use playwright-cli: `npm i -g surf-cli`");
+        } catch {}
+        try {
+          const { spawn } = await import("node:child_process");
+          const SHELL_OPT = process.platform === "win32" ? { shell: true } : {};
+          const ok = await new Promise<boolean>((resolve) => {
+            const c = spawn("graphify", ["--version"], { stdio: "ignore", ...SHELL_OPT });
+            c.on("error", () => resolve(false));
+            c.on("close", (code) => resolve(code === 0));
+          });
+          if (!ok) hints.push("💡 install graphify for cross-engagement recall (falling back to grep)");
+        } catch {}
+        for (const h of hints) ctx?.ui?.notify?.(h, "info");
+      }
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack session_start failed: ${e?.message ?? String(e)}`,
