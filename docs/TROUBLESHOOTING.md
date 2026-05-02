@@ -333,3 +333,34 @@ npx -y @m4xx101/vibeshack install
 ```
 
 Engagement data at `~/.pi/agent/vibehack/engagements/` is preserved across uninstall.
+
+## pi-mono install fails with `bunx git-hooks` error
+
+The `@zenobius/pi-dcp` peer-dep has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). The pi-vibehack `install.sh` detects this and auto-retries with `--ignore-scripts` (safe — the only skipped scripts are dev-time git-hooks setup, not runtime code).
+
+If installing pi-mono manually:
+
+```bash
+npm install -g @mariozechner/pi-coding-agent --ignore-scripts
+```
+
+## WSL: Windows `pi.exe` shadowing Linux `pi`
+
+Symptom: after installing pi inside WSL, `pi --version` still runs the Windows binary because `/mnt/c/...` precedes the Linux npm global bin in `$PATH`.
+
+Fix:
+
+```bash
+echo 'export PATH="$(npm config get prefix)/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+which pi   # should now show ~/.nvm/.../bin/pi or similar Linux path
+```
+
+## Auditing the install (optional)
+
+```bash
+cd "$(npm root -g)/@m4xx101/vibeshack"
+npm audit --omit=dev
+```
+
+The repo's dev-deps (vitest, etc.) are flagged with several low/moderate vulns but they don't ship in the production global install. `--omit=dev` filters them out.
