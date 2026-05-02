@@ -10,3 +10,7 @@ tmp/
 
 # Claude Code local config
 .claude/
+
+# Internal planning artifacts (not for users)
+docs/superpowers/
+RESUME.md
