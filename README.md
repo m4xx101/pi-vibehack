@@ -21,6 +21,20 @@ Every Planner turn must mutate the tree (hypothesis-or-die, enforced by hooks). 
 
 ---
 
+## What separates pi-vibehack
+
+- **Hypothesis-tree REPL** — every claim becomes a child node with falsifier branches. Drift is structural, not buried in chat history.
+- **On-the-fly tool synthesis** — `/vibehack-ingest` builds tools mid-engagement (scurl auth-flows, MCP servers, recipe SKILL.md, specialist SKILL.md).
+- **Wire-layer recall** — graphify-backed past-engagement context injected at `before_provider_request` (not just session-start memory).
+- **3-role subprocess isolation** — Planner / Operator / Reporter run as separate `pi --mode json -p --no-session` subprocesses. No prompt-pollution.
+- **Skills-first methodology** — drops in alongside operator's existing `~/.pi/agent/skills/`; recipes/specialists are first-class.
+- **Live cost telemetry** *(v1.0.1)* — `⚡ $X (last turn)` surfaces runaway operator subprocesses immediately.
+- **Self-evolving harness** *(v1.1)* — Layer B reflection on `session_before_compact`; Layer A bench-driven mutation via `/vibehack-evolve --mutate`.
+
+See [docs/COMPARISON.md](docs/COMPARISON.md) for the side-by-side feature table vs H-mmer, XBOW, pentagi.
+
+---
+
 ## The hypothesis-tree REPL
 
 ```
@@ -125,6 +139,12 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for a full first-run walkthrough wi
 | Subagent role files | 2 | `subagents/vibehack-{operator,reporter}.md` |
 | ADRs | 9 | `docs/adr/0001-…` to `0009-…` |
 | Tests | 122 | across 9 vitest suites |
+
+### New in v1.0.1
+
+- **User-configurable models** via `~/.pi/agent/vibehack/config.yaml` — `bin/install.js --planner/--operator/--reporter` writes role assignments; `/vibehack-config sync` regenerates prompt frontmatter from the live config without clobbering hand-edits.
+- **Soft-dep auto-install with consent** — `session_start` detects missing soft companions (pi-super-curl, surf-cli, graphify) and offers a single batched install prompt; `auto_install.enabled: false` opts out and restores the legacy banner.
+- **Live cost telemetry** in the status banner — `⚡ $X (last turn)` surfaces runaway Operator subprocesses immediately and turns red above `cost_warn_threshold_usd`.
 
 ---
 
