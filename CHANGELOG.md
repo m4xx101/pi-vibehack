@@ -53,6 +53,10 @@
 - Lazy Kali recipe generation when planner picks unknown tool (Phase 9 deferred; `lookupTool` helper ready)
 - Tool-name detection heuristic in `tool-result.ts` for browser-verifier (Phase 11 acknowledged; tighten when specialist invocation pattern lands)
 - Cleanup canaries on /vibehack-complete is currently best-effort; consider dedicated bin/vibehack-cleanup-canaries.js
+- Lazy-install wiring from parent session pre-spawn (operator-spawn integration) — Phase 2 deferred
+- Replace `shell:true` in graphify --version probe in session-start.ts:180 with execFile argv form
+- Tighten browser-verifier tool-name detection heuristic in tool-result.ts:204-227 once specialist invocation pattern stabilizes
+- Cleanup canaries on `/vibehack-complete` is currently best-effort `node -e` invocation; consider a dedicated `bin/vibehack-cleanup-canaries.js` for robustness
 
 ---
 

@@ -157,6 +157,23 @@ describe("HYPOTHESIS_MUTATING_TOOLS / PROPOSAL_TOOLS partitioning", () => {
   });
 });
 
+describe("PLANNER_TOOL_NAMES registry consistency", () => {
+  it("every PLANNER_TOOL_NAMES entry has a registered tool object exposed from tools/index.ts", async () => {
+    const toolsModule = await import("../extensions/pi-vibehack/tools/index.ts");
+    const names = toolsModule.PLANNER_TOOL_NAMES;
+    // Collect all exported tool objects (have `name` field)
+    const registeredNames = new Set<string>();
+    for (const [_key, val] of Object.entries(toolsModule)) {
+      if (val && typeof val === "object" && "name" in val && typeof (val as any).name === "string") {
+        registeredNames.add((val as any).name);
+      }
+    }
+    for (const planName of names) {
+      expect(registeredNames.has(planName)).toBe(true);
+    }
+  });
+});
+
 describe("slugify + newEngagementId edge cases", () => {
   it("folds Unicode diacritics", () => {
     expect(slugify("café-target")).toBe("cafe-target");
