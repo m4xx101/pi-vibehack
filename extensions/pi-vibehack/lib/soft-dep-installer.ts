@@ -1,4 +1,6 @@
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
+
+const NPM_PKG_RE = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
 
 export interface SoftDep {
   name: string;
@@ -43,7 +45,8 @@ export function fallbackFor(category: string): string[] {
 }
 
 export function installNpmGlobal(pkg: string): { ok: boolean; error?: string } {
-  try { execSync(`npm install -g ${pkg}`, { stdio: "pipe" }); return { ok: true }; }
+  if (!NPM_PKG_RE.test(pkg)) return { ok: false, error: `invalid pkg name: ${pkg}` };
+  try { execFileSync("npm", ["install", "-g", pkg], { stdio: "pipe" }); return { ok: true }; }
   catch (e) { return { ok: false, error: (e as Error).message }; }
 }
 

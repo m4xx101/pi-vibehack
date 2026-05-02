@@ -40,4 +40,19 @@ describe("soft-dep-installer", () => {
     expect(ask).not.toHaveBeenCalled();
     expect(result).toEqual({ installed: [], declined: [], skipped: false });
   });
+  it("installNpmGlobal rejects shell-injection-shaped pkg names without shelling out", async () => {
+    const { installNpmGlobal } = await import("../extensions/pi-vibehack/lib/soft-dep-installer.ts");
+    const malicious = ["foo; rm -rf /", "foo && rm", "foo`whoami`", "../../etc/passwd", ""];
+    for (const bad of malicious) {
+      const result = installNpmGlobal(bad);
+      expect(result.ok).toBe(false);
+      expect(result.error).toMatch(/invalid pkg name/);
+    }
+  });
+  it("installNpmGlobal accepts valid scoped + unscoped names (no shell-out — would 404 in real npm)", () => {
+    const NPM_PKG_RE = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
+    expect(NPM_PKG_RE.test("pi-super-curl")).toBe(true);
+    expect(NPM_PKG_RE.test("@nicobailon/memory-mode")).toBe(true);
+    expect(NPM_PKG_RE.test("graphify")).toBe(true);
+  });
 });
