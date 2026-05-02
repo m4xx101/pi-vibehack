@@ -1,4 +1,4 @@
-import { execSync, execFileSync } from "child_process";
+import { execFileSync } from "child_process";
 
 const NPM_PKG_RE = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
 
@@ -23,8 +23,8 @@ export interface DetectOpts { which?: (cmd: string) => string | null; }
 
 function defaultWhich(cmd: string): string | null {
   try {
-    const probe = process.platform === "win32" ? `where ${cmd}` : `which ${cmd}`;
-    const out = execSync(probe, { stdio: ["ignore","pipe","ignore"] }).toString().trim();
+    const tool = process.platform === "win32" ? "where" : "which";
+    const out = execFileSync(tool, [cmd], { stdio: ["ignore","pipe","ignore"] }).toString().trim();
     return out || null;
   } catch { return null; }
 }
