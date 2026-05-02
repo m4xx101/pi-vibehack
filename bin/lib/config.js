@@ -51,7 +51,14 @@ export function readConfig(filePath) {
   if (!fs.existsSync(filePath)) return null;
   const text = fs.readFileSync(filePath, "utf8");
   const yaml = loadYamlSync();
-  if (yaml) return migrateConfig(yaml.parse(text));
+  if (yaml) {
+    try {
+      return migrateConfig(yaml.parse(text));
+    } catch (e) {
+      throw new Error(`config.yaml: invalid YAML — ${e?.message ?? String(e)}`);
+    }
+  }
+  // No yaml package available — fall back to JSON parsing.
   try { return migrateConfig(JSON.parse(text)); }
   catch { throw new Error("config.yaml requires `yaml` npm package; run npm install yaml"); }
 }
