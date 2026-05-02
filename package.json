@@ -2,21 +2,60 @@
   "name": "@m4xx101/vibeshack",
   "version": "1.0.0",
   "description": "Context-aware vibe-hacking harness on pi-mono. Hypothesis-tree REPL, graphify-backed recall, on-the-fly tool synthesis. Authorized testing only.",
-  "keywords": ["pi-mono", "pi-agent", "skill", "agentskills", "security", "offensive-security", "pentest", "bug-bounty", "ctf", "red-team", "vibe-hacking", "vibehack"],
+  "keywords": [
+    "pi-mono",
+    "pi-agent",
+    "skill",
+    "agentskills",
+    "security",
+    "offensive-security",
+    "pentest",
+    "bug-bounty",
+    "ctf",
+    "red-team",
+    "vibe-hacking",
+    "vibehack"
+  ],
   "homepage": "https://github.com/m4xx101/pi-vibehack#readme",
-  "bugs": { "url": "https://github.com/m4xx101/pi-vibehack/issues" },
+  "bugs": {
+    "url": "https://github.com/m4xx101/pi-vibehack/issues"
+  },
   "license": "MIT",
   "author": "m4xx101 <m4xx101101@gmail.com>",
-  "repository": { "type": "git", "url": "git+https://github.com/m4xx101/pi-vibehack.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m4xx101/pi-vibehack.git"
+  },
   "type": "module",
-  "engines": { "node": ">=18" },
-  "bin": { "pi-vibehack": "bin/install.js" },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "pi-vibehack": "bin/install.js"
+  },
   "main": "bin/install.js",
-  "files": ["bin/", "extensions/", "prompts/", "skills/", "subagents/", "templates/", "docs/", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": [
+    "bin/",
+    "extensions/",
+    "prompts/",
+    "skills/",
+    "subagents/",
+    "templates/",
+    "docs/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "pi": {
-    "extensions": ["./extensions/pi-vibehack/index.ts"],
-    "skills": ["./skills"],
-    "prompts": ["./prompts"]
+    "extensions": [
+      "./extensions/pi-vibehack/index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts"
+    ]
   },
   "scripts": {
     "test": "vitest run",
@@ -26,8 +65,8 @@
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
-    "pi-prompt-template-model": "^0.9.0",
-    "@zenobius/pi-dcp": "^0.1.0"
+    "@zenobius/pi-dcp": "^0.1.0",
+    "pi-prompt-template-model": "^0.9.0"
   },
   "optionalDependencies": {
     "pi-super-curl": "*",
@@ -38,5 +77,8 @@
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "yaml": "^2.8.4"
   }
 }

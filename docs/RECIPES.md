@@ -155,3 +155,27 @@ Operator returns structured JSON.
 ## Adding your own recipes & specialists
 
 See [`EXTENDING.md`](EXTENDING.md).
+
+## Soft-dep fallback chains
+
+pi-vibehack uses optional soft dependencies. When one is missing, the harness falls back through its category's chain (`fallbackFor()` in `extensions/pi-vibehack/lib/soft-dep-installer.ts`).
+
+| Category | Primary | Fallbacks |
+|---|---|---|
+| HTTP probe | `pi-super-curl` | `curl` → fail |
+| Browser automation | `surf-cli` | `playwright` → headless-chrome via raw CDP → fail |
+| Wire-layer recall | `graphify` | `grep` over `events.jsonl` → "(no recall hits)" |
+| MCP servers | `pi-mcp-adapter` | direct MCP (high token cost) → fail |
+
+When `auto_install.enabled: true` in `~/.pi/agent/vibehack/config.yaml`, the session_start prompt offers `npm install -g` for missing deps. Decline at the prompt to use the fallback chain.
+
+Lazy install fires when a leaf needs a tool the harness lacks:
+
+```
+⚠ leaf n_3a needs browser automation. Install surf-cli now?
+   y) install via npm
+   n) fall back to playwright (if installed) or curl
+   s) skip; mark leaf inconclusive
+```
+
+System packages (subfinder, nmap, nuclei, etc) are NOT auto-installed in v1.0.1 — those rely on Kali pre-install or the v1.1 Kali-MCP soft companion.

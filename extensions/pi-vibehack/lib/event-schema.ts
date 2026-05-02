@@ -35,7 +35,7 @@ export const EventTypes = [
 // the convention (e.g. "n_3a") is enforced by lib/events.ts:newNodeId in Task 3.2.
 // Cross-field invariants (e.g. confirm requires non-empty evidence) belong in
 // validateEvent() (Task 3.2), not here — typebox can't express them statically.
-export const EventSchema = Type.Object({
+export const LegacyEventSchema = Type.Object({
   ts: Type.String({ format: "date-time" }),
   engagement_id: Type.String(),
   event: Type.Union(EventTypes.map((t) => Type.Literal(t))),
@@ -64,5 +64,61 @@ export const EventSchema = Type.Object({
   rationale: Type.Optional(Type.String()),
   metadata: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 }, { additionalProperties: false });
+
+// v1.1 event types (§3.6, §4.3) — share legacy envelope convention: discriminated by
+// `event` field, carry `engagement_id`. These are strict per-type schemas; cross-field
+// invariants belong in validateEvent(), not here.
+export const VerificationPassSchema = Type.Object({
+  event: Type.Literal("verification_pass"),
+  engagement_id: Type.String(),
+  node_id: Type.String(),
+  kind: Type.String(),
+  verifier: Type.String(),
+  evidence_ref: Type.String(),
+  ts: Type.String({ format: "date-time" }),
+}, { additionalProperties: false });
+
+export const VerificationFailSchema = Type.Object({
+  event: Type.Literal("verification_fail"),
+  engagement_id: Type.String(),
+  node_id: Type.String(),
+  kind: Type.String(),
+  verifier: Type.String(),
+  reason: Type.String(),
+  ts: Type.String({ format: "date-time" }),
+}, { additionalProperties: false });
+
+export const VerificationAdvisorySchema = Type.Object({
+  event: Type.Literal("verification_advisory"),
+  engagement_id: Type.String(),
+  node_id: Type.String(),
+  kind: Type.String(),
+  message: Type.String(),
+  ts: Type.String({ format: "date-time" }),
+}, { additionalProperties: false });
+
+export const CanaryPlantedSchema = Type.Object({
+  event: Type.Literal("canary_planted"),
+  engagement_id: Type.String(),
+  node_id: Type.String(),
+  canary_kind: Type.Union([
+    Type.Literal("filesystem"),
+    Type.Literal("http-callback"),
+    Type.Literal("dns"),
+    Type.Literal("blind-oob"),
+  ]),
+  uuid: Type.String(),
+  ref: Type.String(),
+  callback_url: Type.Optional(Type.String()),
+  ts: Type.String({ format: "date-time" }),
+}, { additionalProperties: false });
+
+export const EventSchema = Type.Union([
+  LegacyEventSchema,
+  VerificationPassSchema,
+  VerificationFailSchema,
+  VerificationAdvisorySchema,
+  CanaryPlantedSchema,
+]);
 
 export type VibehackEvent = Static<typeof EventSchema>;

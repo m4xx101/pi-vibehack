@@ -9,7 +9,7 @@ import { registerTreeViewer } from "./ui/tree-viewer.ts";
 import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
 import {
   expandTool, pruneTool, confirmTool, evidenceTool, deadEndTool,
-  proposeChainTool, proposeSpecialistTool, recallTool,
+  proposeChainTool, proposeSpecialistTool, recallTool, canaryVerifyTool,
 } from "./tools/index.ts";
 
 export default function vibehack(pi: any) {
@@ -22,6 +22,7 @@ export default function vibehack(pi: any) {
   pi.registerTool(proposeChainTool);
   pi.registerTool(proposeSpecialistTool);
   pi.registerTool(recallTool);
+  pi.registerTool(canaryVerifyTool);
 
   // Hooks
   registerSessionStartHook(pi);

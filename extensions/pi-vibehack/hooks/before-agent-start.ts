@@ -9,6 +9,41 @@ import { getMutationGateMessage } from "./tool-result.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+const BROWSER_CLASS_KINDS = new Set([
+  "DOM-XSS",
+  "reflected-XSS",
+  "stored-XSS",
+  "open-redirect",
+  "clickjacking",
+  "postMessage-leak",
+  "subdomain-takeover",
+]);
+
+export function buildVerificationAdvisory(events: any[]): string {
+  const verified = new Set<string>();
+  for (const e of events) {
+    if (e?.event === "verification_pass" && typeof e.node_id === "string") {
+      verified.add(e.node_id);
+    }
+  }
+  const unverifiedConfirms = events.filter((e) =>
+    e?.event === "confirm" &&
+    BROWSER_CLASS_KINDS.has(e.kind) &&
+    !verified.has(e.node_id)
+  );
+  if (unverifiedConfirms.length === 0) return "";
+
+  const lines = unverifiedConfirms.map(
+    (e) => `${e.node_id} confirmed as ${e.kind} but no browser verification ran.`
+  );
+  return [
+    "<verification_advisory>",
+    ...lines,
+    `Either propose vibehack_propose_specialist(<node_id>, "browser-verifier") to verify in headless Chrome, or accept unverified (re-confirm via operator override).`,
+    "</verification_advisory>",
+  ].join("\n");
+}
+
 async function buildBoundsAdvisory(eng: string): Promise<string> {
   try {
     const { readEvents } = await import("../lib/events.ts");
@@ -77,6 +112,15 @@ export function registerBeforeAgentStartHook(pi: any) {
     let bounds = "";
     if (eng) bounds = await buildBoundsAdvisory(eng);
 
+    let verificationAdvisoryBlock = "";
+    if (eng) {
+      try {
+        const { readEvents } = await import("../lib/events.ts");
+        const evs = await readEvents(engagementDir(eng));
+        verificationAdvisoryBlock = buildVerificationAdvisory(evs as any[]);
+      } catch {}
+    }
+
     const blocks: string[] = [];
     if (persona) blocks.push(persona);
     if (plannerSys) blocks.push(plannerSys);
@@ -86,6 +130,7 @@ export function registerBeforeAgentStartHook(pi: any) {
     if (steer.trim()) blocks.push(`<operator_steer>\n${steer}\n</operator_steer>`);
     if (gate) blocks.push(`<invariant>${gate}</invariant>`);
     if (bounds) blocks.push(`<bounds_advisory>${bounds}</bounds_advisory>`);
+    if (verificationAdvisoryBlock) blocks.push(verificationAdvisoryBlock);
 
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
     return { systemPrompt: newSystem };

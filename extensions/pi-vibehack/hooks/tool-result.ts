@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
 import { turnMutated } from "../lib/turn-state.ts";
@@ -7,6 +8,85 @@ import {
   looksLikeHttpResponse,
   parseHttpHeaders,
 } from "../lib/negative-space.ts";
+
+export interface VerifierResult {
+  verified?: boolean;
+  screenshot_ref?: string;
+  dom_assertion_ref?: string;
+  console_log_ref?: string;
+  reason?: string;
+}
+
+export interface VerifierContext {
+  node_id: string;
+  kind: string;
+  engagement_id: string;
+}
+
+export function validateVerifierResult(
+  payload: VerifierResult,
+  ctx: VerifierContext
+): { event: any } {
+  const ts = new Date().toISOString();
+
+  if (payload.verified === false) {
+    return {
+      event: {
+        event: "verification_fail",
+        engagement_id: ctx.engagement_id,
+        node_id: ctx.node_id,
+        kind: ctx.kind,
+        verifier: "browser-verifier",
+        reason: payload.reason ?? "unverified",
+        ts,
+      },
+    };
+  }
+
+  if (payload.verified === true) {
+    const ssPath = payload.screenshot_ref;
+    let ssOk = false;
+    try {
+      ssOk = !!ssPath && fs.existsSync(ssPath) && fs.statSync(ssPath).size > 0;
+    } catch {
+      ssOk = false;
+    }
+    if (!ssOk) {
+      return {
+        event: {
+          event: "verification_advisory",
+          engagement_id: ctx.engagement_id,
+          node_id: ctx.node_id,
+          kind: ctx.kind,
+          message: "verifier returned verified=true but screenshot artifact missing or empty",
+          ts,
+        },
+      };
+    }
+    return {
+      event: {
+        event: "verification_pass",
+        engagement_id: ctx.engagement_id,
+        node_id: ctx.node_id,
+        kind: ctx.kind,
+        verifier: "browser-verifier",
+        evidence_ref: ssPath!,
+        ts,
+      },
+    };
+  }
+
+  return {
+    event: {
+      event: "verification_advisory",
+      engagement_id: ctx.engagement_id,
+      node_id: ctx.node_id,
+      kind: ctx.kind,
+      message: "verifier returned ambiguous result (verified field missing or non-boolean)",
+      ts,
+    },
+  };
+}
 
 export function registerToolResultHook(pi: any) {
   pi.on("tool_result", async (event: any, _ctx: any) => {
@@ -116,6 +196,32 @@ export function registerToolResultHook(pi: any) {
           const sysBody = await fs2.readFile(j2(HERE, "..", "..", "..", "subagents", "vibehack-reporter.md"), "utf8").catch(() => "");
           spawnReporter({ engagement_id: eng, mode: "per-leaf", node_id, engagement_dir: dir } as any, sysBody)
             .catch((e: any) => fs2.appendFile(j2(dir, "audit.log"), `[${nowIso()}] reporter-per-leaf-fail node=${node_id} err=${e.message}\n`, "utf8").catch(() => {}));
+        }
+      }
+    } catch {}
+
+    // Browser-verifier specialist: validate screenshot before emitting verification_pass.
+    try {
+      const struct = (event as any).structuredOutput ?? (event as any).output;
+      const looksLikeVerifier =
+        struct &&
+        typeof struct === "object" &&
+        ("verified" in struct || "screenshot_ref" in struct) &&
+        ("dom_assertion_ref" in struct || "console_log_ref" in struct || "screenshot_ref" in struct);
+      const toolName: string = event.toolName ?? "";
+      const isVerifierTool =
+        /browser-verifier/i.test(toolName) ||
+        (struct && struct.__verifier === "browser-verifier");
+      if (looksLikeVerifier && isVerifierTool) {
+        const node_id = struct.node_id ?? struct.context?.node_id ?? event.context?.node_id;
+        const kind = struct.kind ?? struct.context?.kind ?? event.context?.kind;
+        if (node_id && kind) {
+          const out = validateVerifierResult(struct, {
+            node_id,
+            kind,
+            engagement_id: eng,
+          });
+          await appendEvent(dir, out.event as any).catch(() => {});
         }
       }
     } catch {}

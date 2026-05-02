@@ -147,9 +147,30 @@ describe("HYPOTHESIS_MUTATING_TOOLS / PROPOSAL_TOOLS partitioning", () => {
     for (const m of HYPOTHESIS_MUTATING_TOOLS) expect(PROPOSAL_TOOLS.has(m)).toBe(false);
   });
 
-  it("PLANNER_TOOL_NAMES is the union plus the recall forward-reference", () => {
-    expect(PLANNER_TOOL_NAMES.length).toBe(8);
+  it("PLANNER_TOOL_NAMES is the union plus the recall + canary-verify forward-references", () => {
+    // 5 mutating + 2 proposal + vibehack_recall + vibehack_canary_verify = 9.
+    // canary_verify is neither mutating nor a proposal — it plants a marker;
+    // retrieval (verified by tool_result hook) is what advances the tree.
+    expect(PLANNER_TOOL_NAMES.length).toBe(9);
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_recall");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_canary_verify");
+  });
+});
+
+describe("PLANNER_TOOL_NAMES registry consistency", () => {
+  it("every PLANNER_TOOL_NAMES entry has a registered tool object exposed from tools/index.ts", async () => {
+    const toolsModule = await import("../extensions/pi-vibehack/tools/index.ts");
+    const names = toolsModule.PLANNER_TOOL_NAMES;
+    // Collect all exported tool objects (have `name` field)
+    const registeredNames = new Set<string>();
+    for (const [_key, val] of Object.entries(toolsModule)) {
+      if (val && typeof val === "object" && "name" in val && typeof (val as any).name === "string") {
+        registeredNames.add((val as any).name);
+      }
+    }
+    for (const planName of names) {
+      expect(registeredNames.has(planName)).toBe(true);
+    }
   });
 });
 

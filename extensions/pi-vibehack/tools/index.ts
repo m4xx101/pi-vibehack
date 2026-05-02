@@ -6,6 +6,7 @@ export { deadEndTool } from "./dead-end.ts";
 export { proposeChainTool } from "./propose-chain.ts";
 export { proposeSpecialistTool } from "./propose-specialist.ts";
 export { recallTool } from "./recall.ts";
+export { canaryVerifyTool } from "./canary-verify.ts";
 
 export const PLANNER_TOOL_NAMES = [
   "vibehack_expand",
@@ -16,6 +17,7 @@ export const PLANNER_TOOL_NAMES = [
   "vibehack_propose_chain",
   "vibehack_propose_specialist",
   "vibehack_recall",
+  "vibehack_canary_verify",
 ];
 
 // Tools whose call genuinely advances the tree (state-mutating). Phase 5's

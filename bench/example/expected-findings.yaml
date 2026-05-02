@@ -1,0 +1,14 @@
+target: http://127.0.0.1:18080
+class: web-app
+expected_findings:
+  - phase: enum
+    kind: directory-listing
+    surface: /
+    severity: low
+  - phase: exploit
+    kind: SQLi
+    surface: /vulnerabilities/sqli/
+    severity: high
+allow_extras: true
+fail_on_missing:
+  - SQLi

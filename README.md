@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/badge/npm-%40m4xx101%2Fpi--vibehack-blue)](https://www.npmjs.com/package/@m4xx101/vibeshack)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![built for](https://img.shields.io/badge/built%20for-pi--mono-orange)](https://github.com/badlogic/pi-mono)
-[![status](https://img.shields.io/badge/status-v1.0.0--rc1-yellow)](CHANGELOG.md)
+[![status](https://img.shields.io/badge/status-v1.1.0--rc1-yellow)](CHANGELOG.md)
 
 > **AUTHORIZED TESTING ONLY.** The harness has unleashed scope by design. *You* are responsible for authorization, scope, and signed agreements. Do not point this at any system you do not own or have explicit, written permission to test. The `audit.log` is your forensic record. See [SECURITY.md](docs/SECURITY.md).
 
@@ -18,6 +18,24 @@ pi-vibehack is a pi-mono extension that turns a pi window into a security-resear
 Every Planner turn must mutate the tree (hypothesis-or-die, enforced by hooks). Every leaf has a falsifier (no vibes-only claims). Every confirmation triggers an Operator subprocess that runs in `pi --mode json -p --no-session` isolation, returns schema-validated JSON, and never leaks raw target output back into the Planner's reasoning chain. Every confirmed leaf folds into a graphify graph that compounds across engagements — engagement #2 against a similar target *starts smarter than #1 finished*.
 
 **The 10× move:** the `before_provider_request` hook reads the current open hypothesis, runs an embedding-similarity query against the global graphify graph, picks top-3 most-relevant subgraphs, and silently injects them into the Planner system prompt as a `<recall>` block — every turn, without the Planner ever calling a recall tool. No public security-agent harness does this today. See [ARCHITECTURE.md §The 10× move](docs/ARCHITECTURE.md#the-10x-move).
+
+---
+
+## What separates pi-vibehack
+
+- **Hypothesis-tree REPL** — every claim becomes a child node with falsifier branches. Drift is structural, not buried in chat history.
+- **On-the-fly tool synthesis** — `/vibehack-ingest` builds tools mid-engagement (scurl auth-flows, MCP servers, recipe SKILL.md, specialist SKILL.md).
+- **Wire-layer recall** — graphify-backed past-engagement context injected at `before_provider_request` (not just session-start memory).
+- **3-role subprocess isolation** — Planner / Operator / Reporter run as separate `pi --mode json -p --no-session` subprocesses. No prompt-pollution.
+- **Skills-first methodology** — drops in alongside operator's existing `~/.pi/agent/skills/`; recipes/specialists are first-class.
+- **Live cost telemetry** *(v1.0.1)* — `⚡ $X (last turn)` surfaces runaway operator subprocesses immediately.
+- **Self-evolving harness** *(v1.1)* — Layer B reflection on `session_before_compact` (auto-writes refined recipes to `~/.pi/agent/vibehack/skills/learned/`); Layer A bench-driven mutation via `/vibehack-evolve --mutate` (worktree-isolated, regression-gated).
+- **Kali tool auto-discovery** *(v1.1)* — 76-tool curated catalog across 8 categories; cached per-session; `/vibehack-rescan-kali` for manual refresh; Kali-MCP soft companion detection.
+- **Browser-CDP verifier** *(v1.1)* — `browser-verifier` specialist + `verification_advisory` system-prompt injection for unverified browser-class confirms (DOM-XSS, reflected/stored-XSS, open-redirect, clickjacking, postMessage-leak, subdomain-takeover).
+- **Canary primitives** *(v1.1)* — `vibehack_canary_verify` Planner tool plants filesystem/HTTP-callback/DNS canaries; OOB collector pinned via `/vibehack-pin canary-collector: <url>` for blind classes.
+- **Auto-leverage existing pi extensions** *(v1.1)* — detects `~/.pi/agent/extensions/` and registers 5 integrations when present (pi-mcp-adapter, memory-mode, handoff, pi-rewind-hook, pi-side-chat); operator's existing skills surface as `recipe_hints` in `<recall>`.
+
+See [docs/COMPARISON.md](docs/COMPARISON.md) for the side-by-side feature table vs H-mmer, XBOW, pentagi.
 
 ---
 
@@ -90,6 +108,8 @@ node bin/install.js install
 
 Works without npm registry access if you mirror the repo internally. The peer-dep flag skips `pi-prompt-template-model` / `@zenobius/pi-dcp` advisory transitives — install separately if needed.
 
+> 💡 If install fails (especially with `bunx git-hooks` error) or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 See [`docs/INSTALL.md`](docs/INSTALL.md) for profile flags, custom local providers, project-scoped installs, and troubleshooting.
 
 ---
@@ -125,6 +145,21 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for a full first-run walkthrough wi
 | Subagent role files | 2 | `subagents/vibehack-{operator,reporter}.md` |
 | ADRs | 9 | `docs/adr/0001-…` to `0009-…` |
 | Tests | 122 | across 9 vitest suites |
+
+### New in v1.0.1
+
+- **User-configurable models** via `~/.pi/agent/vibehack/config.yaml` — `bin/install.js --planner/--operator/--reporter` writes role assignments; `/vibehack-config sync` regenerates prompt frontmatter from the live config without clobbering hand-edits.
+- **Soft-dep auto-install with consent** — `session_start` detects missing soft companions (pi-super-curl, surf-cli, graphify) and offers a single batched install prompt; `auto_install.enabled: false` opts out and restores the legacy banner.
+- **Live cost telemetry** in the status banner — `⚡ $X (last turn)` surfaces runaway Operator subprocesses immediately and turns red above `cost_warn_threshold_usd`.
+
+### New in v1.1.0-rc1
+
+- **Self-evolving harness** — Layer B reflection (`extensions/pi-vibehack/lib/reflection.ts`) clusters confirmed leaves by stack signature on `session_before_compact` / `/vibehack-complete` / manual `/vibehack-reflect`, writing refined recipes to `~/.pi/agent/vibehack/skills/learned/<slug>/SKILL.md`. Operator-edited recipes are detected and never clobbered. Layer A: `/vibehack-evolve --bench <name>` runs `bench/<name>/up.sh` → engagement → evaluator → `down.sh`; `--mutate` spawns the `vibehack-mutator` subagent in a git worktree and only lands the mutation if the target bench passes AND the regression suite stays green.
+- **Kali tool auto-discovery** — `KALI_TOOLS` catalog of 76 tools across 8 categories (recon/exploit/crack/forensic/network/web_api/mobile/misc). `detectKaliCapabilities()` runs at `session_start` and caches to `~/.pi/agent/vibehack/.capabilities.json`. Manual refresh via `/vibehack-rescan-kali`. Kali-MCP companion (`mcp-kali-server` / `zebbern-kali-mcp`) detected and banner-announced.
+- **Auto-leverage existing pi extensions** — Extension detector scans `~/.pi/agent/extensions/`, `<cwd>/.pi/extensions/`, and `~/.pi/agent/skills/`. 5 integrations auto-activate when their corresponding extension is present: `pi-mcp-adapter`, `memory-mode`, `handoff`, `pi-rewind-hook`, `pi-side-chat`. Operator's `~/.pi/agent/skills/<dir>/SKILL.md` files surface as `recipe_hints` inside the `<recall>` block. New soft commands `/vibehack-rewind` (needs pi-rewind-hook) and `/vibehack-fork` (needs pi-side-chat).
+- **Browser-CDP verifier** — `skills/specialists/browser-verifier/SKILL.md` verifies browser-class confirms via headless Chrome (surf-cli → playwright → CDP fallback), capturing screenshot + DOM + console + network. A `<verification_advisory>` block is injected at `before_agent_start` between `<bounds_advisory>` and `<recall>` whenever a browser-class confirm lacks prior verification (DOM-XSS, reflected-XSS, stored-XSS, open-redirect, clickjacking, postMessage-leak, subdomain-takeover). The `tool_result` hook validates the screenshot artifact (exists + non-zero size) before emitting `verification_pass`; missing or empty downgrades to `verification_advisory`.
+- **Canary primitives** — `extensions/pi-vibehack/lib/canary.ts` provides `plantFileCanary` / `plantHttpCallbackCanary` / `verifyCanary` / `cleanupCanaries`. New Planner tool `vibehack_canary_verify(node_id, kind)` supports 6 kinds: RCE/AFR (filesystem), SSRF/open-redirect (HTTP callback), DNS/blind-OOB (operator-pinned collector subdomain via `/vibehack-pin canary-collector: <url>`). HTTP listener uses an ephemeral port (`:0`); cleanup runs at `/vibehack-complete`.
+- **Schema additions** — 4 new event types in `event-schema.ts`: `verification_pass`, `verification_fail`, `verification_advisory`, `canary_planted`. All use the Phase 5 envelope (`event:` discriminator + `engagement_id`), all have `additionalProperties: false`, all backward-compatible with v1.0.0-rc1 `events.jsonl`.
 
 ---
 
@@ -192,7 +227,7 @@ SOTA references that informed the design (verify before publishing): Project Nap
 
 ## Status
 
-This is **v1.0.0-rc1** — release candidate. Tagged at `ae3fb1e`. Tests: 122/122 across 9 vitest suites. Not yet published to npm under that exact tag (the `package.json` declares `1.0.0`; we will cut `v1.0.0` once external smoke testing closes). Known nits:
+This is **v1.1.0-rc1** — release candidate. Predecessor tag: `v1.0.1-rc1` (commit `07e8856`). Tests: 262/262 across 38 vitest files. Not yet published to npm under that exact tag (the `package.json` declares `1.0.0`; we will cut `v1.0.0` once external smoke testing closes). Known nits:
 
 - Pre-existing `TS7016` warnings (untyped third-party JS imports) — non-blocking, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 - A `DEP0190` shell:true warning on Windows from one spawn site — non-blocking; tracked.

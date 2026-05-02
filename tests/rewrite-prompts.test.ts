@@ -45,4 +45,25 @@ describe("rewritePromptsForProfile", () => {
     const afterTree = await fs.readFile(join(PROMPTS, "vibehack-tree.md"), "utf8");
     expect(afterTree).toBe(beforeTree);
   });
+
+  it("rewritePromptsForProfile reads model assignments from config.yaml when present", async () => {
+    const os = await import("node:os");
+    const TMP = join(os.tmpdir(), `vh-rewrite-cfg-${process.pid}`);
+    await fs.mkdir(TMP, { recursive: true });
+    try {
+      const cfgPath = join(TMP, "config.yaml");
+      const { writeConfig, defaultConfig } = await import("../bin/lib/config.js");
+      const cfg = defaultConfig("hybrid");
+      cfg.models.planner = "custom-planner-model";
+      writeConfig(cfgPath, cfg);
+
+      const { rewritePromptsForProfile } = await import("../bin/lib/rewrite-prompts.js");
+      await rewritePromptsForProfile("hybrid", { configPath: cfgPath, promptsDir: PROMPTS });
+
+      const planner = await fs.readFile(join(PROMPTS, "vibehack.md"), "utf8");
+      expect(planner).toMatch(/model:\s*custom-planner-model/);
+    } finally {
+      await fs.rm(TMP, { recursive: true, force: true });
+    }
+  });
 });
