@@ -27,7 +27,14 @@ export async function runBench(opts: RunBenchOpts): Promise<EvalResult> {
   if (!fs.existsSync(expectedPath)) {
     throw new Error(`bench: expected-findings.yaml not found at ${expectedPath}`);
   }
-  const expected: ExpectedFindingsFile = YAML.parse(fs.readFileSync(expectedPath, "utf8"));
+  const parsed = YAML.parse(fs.readFileSync(expectedPath, "utf8"));
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error(`bench: expected-findings.yaml is not a valid object`);
+  }
+  if (!Array.isArray(parsed.expected_findings)) {
+    throw new Error(`bench: expected-findings.yaml missing 'expected_findings' array`);
+  }
+  const expected: ExpectedFindingsFile = parsed;
 
   const upScript = path.join(opts.benchDir, "up.sh");
   const downScript = path.join(opts.benchDir, "down.sh");

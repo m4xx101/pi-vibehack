@@ -27,6 +27,12 @@ if (!bench) {
   process.exit(2);
 }
 
+const BENCH_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
+if (!BENCH_NAME_RE.test(bench)) {
+  console.error(`error: invalid bench name: ${bench} (must match ${BENCH_NAME_RE})`);
+  process.exit(2);
+}
+
 const benchDir = path.resolve(REPO_ROOT, "bench", bench);
 if (!fs.existsSync(benchDir)) {
   console.error(`error: bench directory not found: ${benchDir}`);

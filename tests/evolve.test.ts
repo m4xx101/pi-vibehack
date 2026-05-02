@@ -87,4 +87,32 @@ describe("runBench (no --mutate)", () => {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  it("missing expected_findings array throws clear error", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-evolve-"));
+    try {
+      fs.writeFileSync(path.join(tmp, "up.sh"), "#!/bin/sh\nexit 0\n");
+      fs.writeFileSync(path.join(tmp, "down.sh"), "#!/bin/sh\nexit 0\n");
+      fs.writeFileSync(path.join(tmp, "expected-findings.yaml"), "target: http://example\n");  // no expected_findings
+      fs.chmodSync(path.join(tmp, "up.sh"), 0o755);
+      fs.chmodSync(path.join(tmp, "down.sh"), 0o755);
+      await expect(runBench({ benchDir: tmp, runEngagement: async () => [], mutate: false })).rejects.toThrow(/expected_findings/);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("malformed yaml throws clear error", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-evolve-"));
+    try {
+      fs.writeFileSync(path.join(tmp, "up.sh"), "#!/bin/sh\nexit 0\n");
+      fs.writeFileSync(path.join(tmp, "down.sh"), "#!/bin/sh\nexit 0\n");
+      fs.writeFileSync(path.join(tmp, "expected-findings.yaml"), "[ unclosed");
+      fs.chmodSync(path.join(tmp, "up.sh"), 0o755);
+      fs.chmodSync(path.join(tmp, "down.sh"), 0o755);
+      await expect(runBench({ benchDir: tmp, runEngagement: async () => [], mutate: false })).rejects.toThrow();
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 });
