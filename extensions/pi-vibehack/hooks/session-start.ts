@@ -36,6 +36,43 @@ export function registerSessionStartHook(pi: any) {
       );
     }
 
+    // Best-effort: detect Kali tool capabilities (cache hit reuses, miss probes
+    // PATH and writes ~/.pi/agent/vibehack/.capabilities.json). Soft-companion
+    // Kali-MCP banner if mcp-kali-server / zebbern-kali-mcp is on PATH. Wrapped
+    // so a detection failure never blocks session_start.
+    try {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      const {
+        detectKaliCapabilities,
+        loadCachedCapabilities,
+        saveCachedCapabilities,
+        detectKaliMcp,
+      } = await import("../lib/kali-tools.ts");
+      const capPath = path.join(os.homedir(), ".pi", "agent", "vibehack", ".capabilities.json");
+      let caps = loadCachedCapabilities(capPath);
+      if (!caps) {
+        caps = detectKaliCapabilities();
+        saveCachedCapabilities(capPath, caps);
+      }
+      const availableCount = Object.values(caps).filter((c: any) => c.available).length;
+      if (availableCount > 5) {
+        ctx?.ui?.notify?.(`💡 ${availableCount} Kali tools detected on PATH`, "info");
+      }
+      const mcp = detectKaliMcp();
+      if (mcp) {
+        ctx?.ui?.notify?.(
+          `💡 Kali-MCP detected (${mcp}) — additional tools available via MCP`,
+          "info",
+        );
+      }
+    } catch (e: any) {
+      ctx?.ui?.notify?.(
+        `pi-vibehack: kali detection skipped (${e?.message ?? String(e)})`,
+        "warn",
+      );
+    }
+
     try {
       const eng = await activeEngagementId();
       if (!eng) {
