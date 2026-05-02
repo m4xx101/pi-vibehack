@@ -6,9 +6,26 @@ import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { readEvents } from "../lib/events.ts";
 import { foldNodes } from "../render/tree-md.ts";
 import { markNodeDead } from "../dcp-rules/index.ts";
+import { registerProvidersFromConfig } from "./register-providers.ts";
 
 export function registerSessionStartHook(pi: any) {
   pi.on("session_start", async (_event: any, ctx: any) => {
+    // Best-effort: register custom providers from ~/.pi/agent/vibehack/config.yaml.
+    // Wrapped in try/catch so a bad config never blocks session_start.
+    try {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      const { readConfig } = await import("../../../bin/lib/config.js");
+      const cfgPath = path.join(os.homedir(), ".pi", "agent", "vibehack", "config.yaml");
+      const cfg = readConfig(cfgPath);
+      if (cfg) registerProvidersFromConfig(pi, cfg);
+    } catch (e: any) {
+      ctx?.ui?.notify?.(
+        `pi-vibehack: provider registration skipped (${e?.message ?? String(e)})`,
+        "warn",
+      );
+    }
+
     try {
       const eng = await activeEngagementId();
       if (!eng) {
