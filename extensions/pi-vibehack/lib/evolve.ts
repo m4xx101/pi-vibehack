@@ -2,6 +2,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { execFileSync, execSync } from "child_process";
+import { randomBytes } from "crypto";
+import { Type, type Static } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 
 // Cross-platform exec for .sh scripts: on win32, route through `sh` so they
 // run under Git Bash / WSL sh.exe instead of being handed to cmd.exe (which
@@ -22,16 +25,20 @@ export interface RunBenchOpts {
   mutate?: boolean;
   // Phase 8 additions:
   runMutator?: (ctx: FailureContext) => Promise<MutationProposal>;
+  // PHASE_8_TODO: production wiring should spawn `pi --mode json -p --no-session` with
+  // subagents/vibehack-mutator.md system prompt — see operator-spawn.ts for the spawn pattern.
   vibehackDataDir?: string;
   regressionBenches?: string[];
 }
 
-export interface MutationProposal {
-  mutation_target: string | null;
-  before: string;
-  after: string;
-  rationale: string;
-}
+export const MutationProposalSchema = Type.Object({
+  mutation_target: Type.Union([Type.String(), Type.Null()]),
+  before: Type.String(),
+  after: Type.String(),
+  rationale: Type.String(),
+}, { additionalProperties: false });
+
+export type MutationProposal = Static<typeof MutationProposalSchema>;
 
 export interface FailureContext {
   missing: string[];
@@ -57,19 +64,27 @@ const ALLOWED_MUTATION_PREFIXES = ["skills/learned/", "specialists/learned/"];
 export async function runMutationLoop(opts: MutationLoopOpts): Promise<MutationLoopResult> {
   const proposal = await opts.runMutator(opts.failureContext);
 
+  if (!Value.Check(MutationProposalSchema, proposal)) {
+    return { landed: false, reason: "mutator returned malformed proposal (failed schema check)", proposal: proposal as any };
+  }
+
   if (!proposal.mutation_target) {
     return { landed: false, reason: "mutator declined (no clean single-mutation fix)", proposal };
   }
 
   const targetNormalized = proposal.mutation_target.replace(/\\/g, "/");
+  const segs = targetNormalized.split("/");
+  if (segs.includes("..") || segs.includes(".")) {
+    return { landed: false, reason: `mutation_target contains traversal segment: ${targetNormalized}`, proposal };
+  }
+  if (path.isAbsolute(targetNormalized)) {
+    return { landed: false, reason: `mutation_target is absolute path: ${targetNormalized}`, proposal };
+  }
   if (!ALLOWED_MUTATION_PREFIXES.some(p => targetNormalized.startsWith(p))) {
     return { landed: false, reason: `mutation_target outside learned/ territory: ${targetNormalized}`, proposal };
   }
-  if (targetNormalized.includes("..") || path.isAbsolute(targetNormalized)) {
-    return { landed: false, reason: `mutation_target invalid (traversal/absolute): ${targetNormalized}`, proposal };
-  }
 
-  const stamp = Date.now();
+  const stamp = `${Date.now()}-${randomBytes(4).toString("hex")}`;
   const worktree = `${opts.vibehackDataDir}.mutation-${stamp}`;
   let usedWorktree = false;
   try {
@@ -106,6 +121,15 @@ export async function runMutationLoop(opts: MutationLoopOpts): Promise<MutationL
 
     const canonicalPath = path.join(opts.vibehackDataDir, targetNormalized);
     fs.mkdirSync(path.dirname(canonicalPath), { recursive: true });
+
+    // Preserve prior version if it exists
+    if (fs.existsSync(canonicalPath)) {
+      const archiveTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const archivePath = path.join(opts.benchDir, "results", `${archiveTimestamp}-prior.md`);
+      fs.mkdirSync(path.dirname(archivePath), { recursive: true });
+      fs.copyFileSync(canonicalPath, archivePath);
+    }
+
     fs.copyFileSync(targetPath, canonicalPath);
     landed = true;
   } finally {

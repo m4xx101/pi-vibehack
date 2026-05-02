@@ -168,6 +168,66 @@ describe("runMutationLoop", () => {
     }
   });
 
+  it("rejects malformed proposal (e.g., after: object instead of string)", async () => {
+    const dataDir = makeFakeDataDir();
+    const benchDir = fs.mkdtempSync(path.join(os.tmpdir(), "vh-mutbench-"));
+    try {
+      const fakeMutator = vi.fn(async () => ({
+        mutation_target: "skills/learned/x/SKILL.md",
+        before: "",
+        after: { script: "rm -rf /" },  // wrong type!
+        rationale: "y",
+      } as any));
+      const fakeRunBench = vi.fn();
+      const result = await runMutationLoop({
+        benchDir, vibehackDataDir: dataDir, runMutator: fakeMutator, runBench: fakeRunBench,
+        regressionBenches: [], failureContext: { missing: ["X"] },
+      });
+      expect(result.landed).toBe(false);
+      expect(result.reason).toMatch(/malformed/);
+      expect(fakeRunBench).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(benchDir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves prior version of canonical file when overwriting", async () => {
+    const dataDir = makeFakeDataDir();
+    const benchDir = fs.mkdtempSync(path.join(os.tmpdir(), "vh-mutbench-"));
+    try {
+      // Pre-populate canonical path with prior content
+      const targetSubpath = "skills/learned/preserve-test/SKILL.md";
+      const canonical = path.join(dataDir, targetSubpath);
+      fs.mkdirSync(path.dirname(canonical), { recursive: true });
+      fs.writeFileSync(canonical, "---\nauto_generated: true\n---\nPRIOR CONTENT.\n");
+
+      const fakeMutator = vi.fn(async () => ({
+        mutation_target: targetSubpath,
+        before: "PRIOR CONTENT.",
+        after: "---\nauto_generated: true\n---\nNEW CONTENT.\n",
+        rationale: "improvement",
+      } as MutationProposal));
+      const fakeRunBench = vi.fn(async () => ({ passed: true, matched: [], missing: [], extras: [] }));
+
+      const result = await runMutationLoop({
+        benchDir, vibehackDataDir: dataDir, runMutator: fakeMutator, runBench: fakeRunBench,
+        regressionBenches: [], failureContext: { missing: ["X"] },
+      });
+      expect(result.landed).toBe(true);
+      // Canonical now has new content
+      expect(fs.readFileSync(canonical, "utf8")).toContain("NEW CONTENT.");
+      // Prior was archived under bench results
+      const archives = (fs.readdirSync(path.join(benchDir, "results")) || []).filter(f => f.endsWith("-prior.md"));
+      expect(archives.length).toBeGreaterThan(0);
+      const archiveContent = fs.readFileSync(path.join(benchDir, "results", archives[0]), "utf8");
+      expect(archiveContent).toContain("PRIOR CONTENT.");
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(benchDir, { recursive: true, force: true });
+    }
+  });
+
   it("cleans up worktree on success AND on rejection", async () => {
     const dataDir = makeFakeDataDir();
     const benchDir = fs.mkdtempSync(path.join(os.tmpdir(), "vh-mutbench-"));
