@@ -40,11 +40,49 @@ function resolveSettingsPath(args) {
     : join(homedir(), ".pi", "agent", "settings.json");
 }
 
+// Detect-and-retry wrapper for any future subprocess install path. Mirrors the
+// install.sh logic: on failure, scan stderr for the @stacksjs/clarity bunx
+// git-hooks postinstall signature; if matched, retry once with --ignore-scripts
+// (safe — only skips dev-time git-hooks setup, not runtime code).
+//
+// Currently bin/install.js does NOT spawn npm install for pi-mono or soft-deps:
+// pi-mono is verified on PATH (operator installs it manually or via install.sh),
+// soft-deps are surfaced as advisory `💡 install ...` hints, and the harness
+// packages are registered via addPackage() into settings.json (pi-mono itself
+// performs the lazy install when it reads settings). This helper is exported
+// so any future spawn site can adopt the same UX without re-deriving it.
+export async function npmInstallWithRetry(args, opts = {}) {
+  const { spawn } = await import("node:child_process");
+  const log = [];
+  const run = (extra = []) => new Promise((resolve) => {
+    const c = spawn("npm", [...args.slice(0, 1), ...extra, ...args.slice(1)], {
+      stdio: ["ignore", "inherit", "pipe"],
+      shell: process.platform === "win32",
+    });
+    c.stderr.on("data", (b) => { const s = b.toString(); log.push(s); process.stderr.write(s); });
+    c.on("error", () => resolve(1));
+    c.on("close", (code) => resolve(code ?? 1));
+  });
+  const code = await run();
+  if (code === 0) return 0;
+  const stderr = log.join("");
+  if (/git-hooks|@stacksjs\/clarity|postinstall/.test(stderr)) {
+    console.error("⚠ npm install failed due to a known transitive postinstall (bunx git-hooks / @stacksjs/clarity).");
+    console.error("  Retrying with --ignore-scripts...");
+    log.length = 0;
+    return await run(["--ignore-scripts"]);
+  }
+  return code;
+}
+
 async function cmdInstall(args) {
   const dryRun = !!args["dry-run"];
   if (!dryRun && !(await verifyPiInstalled())) {
     console.error("✗ pi (pi-mono) is not on PATH.");
     console.error("  Install: npm i -g @mariozechner/pi-coding-agent");
+    console.error("  If install fails with a `bunx git-hooks` error, retry with:");
+    console.error("    npm i -g @mariozechner/pi-coding-agent --ignore-scripts");
+    console.error("  See docs/TROUBLESHOOTING.md for details (incl. WSL PATH-shadowing).");
     console.error("  Then re-run this installer.");
     process.exit(2);
   }
