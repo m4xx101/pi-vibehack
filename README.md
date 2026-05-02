@@ -108,6 +108,8 @@ node bin/install.js install
 
 Works without npm registry access if you mirror the repo internally. The peer-dep flag skips `pi-prompt-template-model` / `@zenobius/pi-dcp` advisory transitives — install separately if needed.
 
+> 💡 If install fails (especially with `bunx git-hooks` error) or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 See [`docs/INSTALL.md`](docs/INSTALL.md) for profile flags, custom local providers, project-scoped installs, and troubleshooting.
 
 ---
