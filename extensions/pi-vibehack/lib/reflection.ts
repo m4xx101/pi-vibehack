@@ -35,6 +35,20 @@ export interface ReflectionOpts {
 export interface ReflectionResult {
   writtenSkills: string[];
   writtenSpecialists: string[];
+  skippedOperatorOwned?: string[];
+}
+
+function isOperatorOwned(filePath: string): boolean {
+  // Returns true if file exists and lacks the auto_generated: true marker (operator hand-edited).
+  if (!fs.existsSync(filePath)) return false;
+  try {
+    const content = fs.readFileSync(filePath, "utf8");
+    const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!fmMatch) return true;  // no frontmatter → operator-shaped, skip
+    return !/auto_generated:\s*true/.test(fmMatch[1]);
+  } catch {
+    return false;  // can't read → don't block on permission errors
+  }
 }
 
 export function extractSignature(leaf: Leaf): string {
@@ -96,31 +110,28 @@ Observed ${cluster.leaves.length} confirmed cases with this signature. When the 
 }
 
 /**
- * Read events resiliently. Wraps readEvents() but accepts an explicit
- * eventsPath rather than an engagement dir, so external callers (slash
- * commands, ad-hoc scripts) don't need to know about engagement layout.
+ * Read events by delegating to readEvents(). Accepts an explicit eventsPath
+ * for caller convenience, but the basename MUST be "events.jsonl" — that is
+ * the only filename readEvents() supports, and we refuse to silently use a
+ * different parser for non-standard names.
  */
 async function loadEvents(eventsPath: string): Promise<any[]> {
-  // readEvents takes an engagement dir and joins "events.jsonl"; mirror that.
   const dir = path.dirname(eventsPath);
   const base = path.basename(eventsPath);
   if (base !== "events.jsonl") {
-    // Fallback: read raw if non-standard filename was passed.
-    let buf: string;
-    try { buf = fs.readFileSync(eventsPath, "utf8"); }
-    catch (e: any) { if (e.code === "ENOENT") return []; throw e; }
-    const out: any[] = [];
-    for (const raw of buf.split("\n")) {
-      if (!raw) continue;
-      try { out.push(JSON.parse(raw)); } catch { /* skip malformed */ }
-    }
-    return out;
+    throw new Error(`reflection requires events.jsonl filename, got: ${base}`);
   }
   return await readEvents(dir);
 }
 
 export async function runReflection(opts: ReflectionOpts): Promise<ReflectionResult> {
   const result: ReflectionResult = { writtenSkills: [], writtenSpecialists: [] };
+
+  // Enforce filename invariant up front so the error is not swallowed below.
+  const base = path.basename(opts.eventsPath);
+  if (base !== "events.jsonl") {
+    throw new Error(`reflection requires events.jsonl filename, got: ${base}`);
+  }
 
   let events: any[];
   try {
@@ -154,6 +165,11 @@ export async function runReflection(opts: ReflectionOpts): Promise<ReflectionRes
     const skillPath = path.join(opts.learnedDir, slug, "SKILL.md");
     // Hard guard: never escape learned/.
     if (!skillPath.includes("learned")) continue;
+    if (isOperatorOwned(skillPath)) {
+      result.skippedOperatorOwned ??= [];
+      result.skippedOperatorOwned.push(skillPath);
+      continue;  // operator took ownership; don't clobber
+    }
     const priority = priorityForSize(cluster.leaves.length);
     fs.mkdirSync(path.dirname(skillPath), { recursive: true });
     fs.writeFileSync(skillPath, renderSkillMd(cluster, priority), "utf8");

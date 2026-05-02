@@ -170,6 +170,53 @@ describe("reflection.ts", () => {
       }
     });
 
+    it("skips writing when destination is operator-owned (lacks auto_generated: true)", async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-refl-"));
+      try {
+        const eventsPath = makeEvents(tmp, [
+          { event: "confirm", engagement_id: "eng-1", node_id: "n1", kind: "SQLi", recipe: "r", specialist: "s", surface: "/x", ts: "2026-05-02T10:00:00.000Z" },
+          { event: "confirm", engagement_id: "eng-1", node_id: "n2", kind: "SQLi", recipe: "r", specialist: "s", surface: "/x", ts: "2026-05-02T10:00:01.000Z" },
+        ]);
+        const learnedDir = path.join(tmp, "learned");
+        const slug = "sqli-r-s";
+        const target = path.join(learnedDir, slug, "SKILL.md");
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, "---\nname: my-custom\n---\nOperator's hand-edited recipe.\n", "utf8");
+
+        const result = await runReflection({ eventsPath, learnedDir, scope: "manual" });
+        expect(result.writtenSkills).toHaveLength(0);
+        expect(result.skippedOperatorOwned).toBeDefined();
+        expect(result.skippedOperatorOwned!.length).toBeGreaterThan(0);
+        const after = fs.readFileSync(target, "utf8");
+        expect(after).toContain("Operator's hand-edited recipe.");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it("overwrites when destination has auto_generated: true (vibehack's own previous output)", async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-refl-"));
+      try {
+        const eventsPath = makeEvents(tmp, [
+          { event: "confirm", engagement_id: "eng-1", node_id: "n1", kind: "SQLi", recipe: "r", specialist: "s", surface: "/x", ts: "2026-05-02T10:00:00.000Z" },
+          { event: "confirm", engagement_id: "eng-1", node_id: "n2", kind: "SQLi", recipe: "r", specialist: "s", surface: "/x", ts: "2026-05-02T10:00:01.000Z" },
+        ]);
+        const learnedDir = path.join(tmp, "learned");
+        const slug = "sqli-r-s";
+        const target = path.join(learnedDir, slug, "SKILL.md");
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, "---\nauto_generated: true\nname: stale\n---\nOld content.\n", "utf8");
+
+        const result = await runReflection({ eventsPath, learnedDir, scope: "manual" });
+        expect(result.writtenSkills.length).toBeGreaterThan(0);
+        const after = fs.readFileSync(target, "utf8");
+        expect(after).not.toContain("Old content.");
+        expect(after).toContain("Vibehack pattern");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
     it("uses 'untargeted' slug for empty/all-symbol kind (slugify discipline)", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vh-refl-"));
       try {
