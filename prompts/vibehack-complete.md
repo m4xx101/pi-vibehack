@@ -20,4 +20,12 @@ node "$(npm root -g)/@m4xx101/vibeshack/bin/vibehack-reflect.js"
 This is best-effort — if it fails (e.g. no active engagement marker), continue
 to report generation. Reflection NEVER writes to shipped recipes/specialists.
 
+Then sweep any HTTP-callback canary listeners planted during the engagement
+(Phase 12). File canaries stay on disk for forensic record; only ephemeral
+listeners are stopped. Best-effort — never block report generation:
+
+```bash
+node --input-type=module -e "import('@m4xx101/vibeshack/extensions/pi-vibehack/lib/canary.ts').then(m => m._cleanupAllListeners()).catch(() => {})"
+```
+
 Return JSON: {"report_path": "report.md", "finding_count": N, "total_cost_usd": X}
