@@ -2,7 +2,7 @@
 
 > Context-aware vibe-hacking on [pi-mono](https://github.com/badlogic/pi-mono). Hypothesis-tree REPL · graphify-backed wire-layer recall · on-the-fly tool synthesis. Bug bounty / pentest / CTF / red team / research.
 
-[![npm](https://img.shields.io/badge/npm-%40m4xx101%2Fpi--vibehack-blue)](https://www.npmjs.com/package/@m4xx101/pi-vibehack)
+[![npm](https://img.shields.io/badge/npm-%40m4xx101%2Fpi--vibehack-blue)](https://www.npmjs.com/package/@m4xx101/vibeshack)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![built for](https://img.shields.io/badge/built%20for-pi--mono-orange)](https://github.com/badlogic/pi-mono)
 [![status](https://img.shields.io/badge/status-v1.0.0--rc1-yellow)](CHANGELOG.md)
@@ -55,27 +55,56 @@ The whole loop is invariant-driven. Hooks enforce: hypothesis-or-die, falsifier-
 
 ---
 
+## Install
+
+Three install paths — pick whichever matches your environment.
+
+### One-liner (npx)
+
+```bash
+# Install pi-mono first if you haven't:
+npm i -g @mariozechner/pi-coding-agent
+
+# Then install pi-vibehack:
+npx -y @m4xx101/vibeshack install
+```
+
+The npm package name is `@m4xx101/vibeshack` (npm word-filter quirk); the harness, repo, slash commands, and brand are all `pi-vibehack`.
+
+### Curl-pipe one-liner
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
+```
+
+Installs pi-mono if missing, then runs `npx -y @m4xx101/vibeshack install`. Inspect the script before piping if your security posture requires it.
+
+### Manual (clone-and-run, for offline installs and contributors)
+
+```bash
+git clone https://github.com/m4xx101/pi-vibehack
+cd pi-vibehack
+npm install --legacy-peer-deps
+node bin/install.js install
+```
+
+Works without npm registry access if you mirror the repo internally. The peer-dep flag skips `pi-prompt-template-model` / `@zenobius/pi-dcp` advisory transitives — install separately if needed.
+
+See [`docs/INSTALL.md`](docs/INSTALL.md) for profile flags, custom local providers, project-scoped installs, and troubleshooting.
+
+---
+
 ## Quickstart
 
 ```bash
-# 1. Install pi-mono (if you haven't yet)
-npm i -g @mariozechner/pi-coding-agent
-
-# 2. Install pi-vibehack
-npx -y @m4xx101/pi-vibehack install
-
-# 3. Boot pi
+# After installing (any of the three paths above):
 pi
-
-# 4. Start an engagement against an authorized target
-/vibehack juice-shop.local
-
-# 5. Watch the tree, steer when needed, wrap up when done
-/vibehack-tree
-/vibehack-complete
+/vibehack juice-shop.local            # start engagement
+/vibehack-tree                         # view hypothesis tree
+/vibehack-complete                     # write final report
 ```
 
-That's it. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for a full first-run walkthrough with sample transcript.
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for a full first-run walkthrough with sample transcript.
 
 ---
 

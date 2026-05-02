@@ -6,7 +6,7 @@ Common problems and their fixes. Symptom → diagnosis → fix.
 
 ### `pi: command not found`
 
-**Symptom:** `npx -y @m4xx101/pi-vibehack install` exits with `✗ pi (pi-mono) is not on PATH.`
+**Symptom:** `npx -y @m4xx101/vibeshack install` exits with `✗ pi (pi-mono) is not on PATH.`
 
 **Fix:**
 ```bash
@@ -22,10 +22,10 @@ Then re-run the install.
 
 **Fix:**
 ```bash
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 # OR if that fails:
 npm install -g pi-prompt-template-model @zenobius/pi-dcp
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 ```
 
 If you're developing in the repo directly, use `npm install --legacy-peer-deps`.
@@ -226,7 +226,7 @@ grep "^model:" ~/path/to/pi-vibehack/prompts/expand.md   # for source-installed
 **Fix:** Reinstall with the right profile:
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --profile hybrid --planner claude-haiku-4-5
+npx -y @m4xx101/vibeshack install --profile hybrid --planner claude-haiku-4-5
 ```
 
 This re-runs the `rewritePromptsForProfile` step and updates `prompts/*.md` accordingly.
@@ -326,10 +326,10 @@ ls -la ~/.pi/agent/vibehack/  # data dir intact?
 If state is corrupted:
 ```bash
 # Nuclear: remove vibehack from settings, preserve engagement data
-npx @m4xx101/pi-vibehack uninstall
+npx @m4xx101/vibeshack uninstall
 
 # Re-install fresh
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 ```
 
 Engagement data at `~/.pi/agent/vibehack/engagements/` is preserved across uninstall.

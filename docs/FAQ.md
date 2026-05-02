@@ -90,13 +90,13 @@ Concretely: engagement #2 against `acme.example` starts with the Planner already
 Yes. `--profile local` at install:
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --profile local
+npx -y @m4xx101/vibeshack install --profile local
 ```
 
 This pins all three roles (Planner/Operator/Reporter) to `qwen-72b-instruct` by default. Override per role:
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --profile local \
+npx -y @m4xx101/vibeshack install --profile local \
   --planner llama-3.3-70b --operator qwen-72b --reporter mistral-large
 ```
 

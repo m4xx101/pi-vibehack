@@ -11,6 +11,5 @@ tmp/
 # Claude Code local config
 .claude/
 
-# Internal planning artifacts (not for users)
-docs/superpowers/
+# Internal session-resume notes (not for users)
 RESUME.md

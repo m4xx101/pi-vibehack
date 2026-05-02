@@ -22,13 +22,13 @@ If you don't have an Anthropic API key (or whichever provider you use) configure
 ## 2. Install pi-vibehack
 
 ```bash
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 ```
 
 This:
 
 - Verifies pi is on PATH (exits with a hint if not).
-- Adds `npm:@m4xx101/pi-vibehack@<pinned>` to `~/.pi/agent/settings.json` (idempotent).
+- Adds `npm:@m4xx101/vibeshack@<pinned>` to `~/.pi/agent/settings.json` (idempotent).
 - Adds the two hard deps (`pi-prompt-template-model`, `@zenobius/pi-dcp`).
 - Creates `~/.pi/agent/vibehack/` skeleton (lessons.jsonl, AGENTS.md, graph/, tools/, specialists/learned/).
 - Writes `.profile` with the model triplet for the chosen profile (default `hybrid`).

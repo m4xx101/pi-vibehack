@@ -513,7 +513,7 @@ restore: false
 ```
 
 **Side effects:**
-- Currently prints the manual upgrade hint (`extensions/pi-vibehack/index.ts:66`): re-run `npx -y @m4xx101/pi-vibehack install` and `/reload`. The full auto-bump-from-npm path is reserved for v1.1.
+- Currently prints the manual upgrade hint (`extensions/pi-vibehack/index.ts:66`): re-run `npx -y @m4xx101/vibeshack install` and `/reload`. The full auto-bump-from-npm path is reserved for v1.1.
 
 **Examples:**
 ```

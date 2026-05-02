@@ -23,14 +23,14 @@ Comprehensive install reference for pi-vibehack v1.0.
 ## Installing pi-vibehack
 
 ```bash
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 ```
 
 What this does, step by step (matches `bin/install.js`):
 
 1. Verifies `pi` is on PATH (exits with code 2 if not).
 2. Resolves the settings path: `~/.pi/agent/settings.json` (global, default) or `.pi/settings.json` (project-scoped, with `--local`).
-3. Adds `npm:@m4xx101/pi-vibehack@<pinned-version>` to the `packages` array. Idempotent: re-running with a different version replaces the existing entry. The patcher has a scoped-name foot-gun guard so it won't accidentally pick up a similarly-named package.
+3. Adds `npm:@m4xx101/vibeshack@<pinned-version>` to the `packages` array. Idempotent: re-running with a different version replaces the existing entry. The patcher has a scoped-name foot-gun guard so it won't accidentally pick up a similarly-named package.
 4. Adds `npm:pi-prompt-template-model@^0.9.0` and `npm:@zenobius/pi-dcp@^0.1.0` (the two hard deps with verified registry names — these names differ from the original spec, see [RESUME.md deviation #1](../RESUME.md)).
 5. Creates the runtime data dir at `~/.pi/agent/vibehack/`:
    ```
@@ -115,9 +115,9 @@ Already added by the installer. Picks up vibehack's four DCP rules via the globa
 ## Profiles
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --profile hybrid     # default
-npx -y @m4xx101/pi-vibehack install --profile frontier
-npx -y @m4xx101/pi-vibehack install --profile local
+npx -y @m4xx101/vibeshack install --profile hybrid     # default
+npx -y @m4xx101/vibeshack install --profile frontier
+npx -y @m4xx101/vibeshack install --profile local
 ```
 
 | Profile | Planner | Operator | Reporter | Notes |
@@ -133,7 +133,7 @@ The profile triplet is persisted to `~/.pi/agent/vibehack/.profile`. Reinstallin
 ## Per-role overrides
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --profile hybrid \
+npx -y @m4xx101/vibeshack install --profile hybrid \
   --planner claude-haiku-4-5 \
   --operator claude-opus-4-7 \
   --reporter claude-sonnet-4-6
@@ -152,7 +152,7 @@ The override values must resolve through pi's MODELS registry or via a `pi-promp
 ## Data-dir override
 
 ```bash
-VIBEHACK_DATA_DIR=/srv/vibehack-test npx -y @m4xx101/pi-vibehack install
+VIBEHACK_DATA_DIR=/srv/vibehack-test npx -y @m4xx101/vibeshack install
 ```
 
 Or as an env var at runtime:
@@ -174,7 +174,7 @@ If unset, defaults to `~/.pi/agent/vibehack/`.
 ## `--local` (project-scoped install)
 
 ```bash
-npx -y @m4xx101/pi-vibehack install --local
+npx -y @m4xx101/vibeshack install --local
 ```
 
 Patches `<cwd>/.pi/settings.json` instead of `~/.pi/agent/settings.json`. Engagement data still goes to `~/.pi/agent/vibehack/` (or wherever `VIBEHACK_DATA_DIR` points). Useful for repos where you want vibehack scoped to a single project.
@@ -191,7 +191,7 @@ The `local` profile expects a `qwen-72b-instruct` (or equivalent) reachable via 
 # 1. Install LM Studio, download Qwen 2.5 72B Instruct, start the server (default :1234).
 # 2. Register the provider in your pi config; see pi-prompt-template-model README.
 # 3. Install vibehack with --profile local.
-npx -y @m4xx101/pi-vibehack install --profile local
+npx -y @m4xx101/vibeshack install --profile local
 ```
 
 ### vLLM
@@ -226,7 +226,7 @@ In a pi session:
 This currently prints the manual update one-liner (the command handler in `extensions/pi-vibehack/index.ts:66` is intentionally minimal). Run:
 
 ```bash
-npx -y @m4xx101/pi-vibehack install
+npx -y @m4xx101/vibeshack install
 ```
 
 This re-runs install (idempotent), bumps the pinned version, and re-resolves the profile. After install, `/reload` in pi.
@@ -238,12 +238,12 @@ The installer is **idempotent**: rerunning with the same flags is a no-op for `s
 ## Uninstalling
 
 ```bash
-npx -y @m4xx101/pi-vibehack uninstall
+npx -y @m4xx101/vibeshack uninstall
 ```
 
 What's removed:
 
-- The `npm:@m4xx101/pi-vibehack@<version>` line from `settings.json`.
+- The `npm:@m4xx101/vibeshack@<version>` line from `settings.json`.
 
 What's preserved:
 
@@ -272,7 +272,7 @@ In a pi session:
 
 If `/vibehack-cost` is unrecognized, the extension didn't load. Check:
 
-- `~/.pi/agent/settings.json` contains the `npm:@m4xx101/pi-vibehack@…` line.
+- `~/.pi/agent/settings.json` contains the `npm:@m4xx101/vibeshack@…` line.
 - The two hard deps are also there.
 - Run `pi` with `DEBUG=pi:*` to see extension loading errors.
 
@@ -287,7 +287,7 @@ See [TROUBLESHOOTING.md §Install issues](TROUBLESHOOTING.md#install-issues) for
 | Re-run `install` with same flags | No-op (idempotent). |
 | Re-run with new `--profile` | Rewrites `.profile` + prompt frontmatter. |
 | Re-run with new `--planner`/`--operator`/`--reporter` | Rewrites only the changed role; others stay. |
-| Re-run with new package version | Replaces the `npm:@m4xx101/pi-vibehack@…` line. |
+| Re-run with new package version | Replaces the `npm:@m4xx101/vibeshack@…` line. |
 | Manually edit `settings.json` | Honored. Re-running install will not duplicate the line. |
 
 ---
@@ -311,7 +311,7 @@ Runtime detection (which determines actual recipe loading) lives in the `session
 - **`pi: command not found`** → install pi-mono first.
 - **`npm ERR! peer dep missing`** → re-run with `npm install --legacy-peer-deps` or trust the warning (advisory).
 - **`EACCES: permission denied`** → `npm config set prefix ~/.npm-global` then add to PATH.
-- **Settings already contains line, install skips** → `npx -y @m4xx101/pi-vibehack uninstall` then reinstall.
+- **Settings already contains line, install skips** → `npx -y @m4xx101/vibeshack uninstall` then reinstall.
 - **`/vibehack` unrecognized after install** → run `/reload` or restart pi.
 - **`<recall>` blocks empty after engagement runs** → install graphify (`npm i -g graphify`).
 
