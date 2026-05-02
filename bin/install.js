@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { addPackage, removePackage } from "./lib/settings.js";
 import { resolveProfile } from "./lib/profile.js";
 import { vibehackDir, ensureDataDir, writeProfile } from "./lib/data-dir.js";
+import { defaultConfig, writeConfig } from "./lib/config.js";
 
 async function verifyPiInstalled() {
   return await new Promise((resolve) => {
@@ -40,7 +41,8 @@ function resolveSettingsPath(args) {
 }
 
 async function cmdInstall(args) {
-  if (!(await verifyPiInstalled())) {
+  const dryRun = !!args["dry-run"];
+  if (!dryRun && !(await verifyPiInstalled())) {
     console.error("✗ pi (pi-mono) is not on PATH.");
     console.error("  Install: npm i -g @mariozechner/pi-coding-agent");
     console.error("  Then re-run this installer.");
@@ -54,6 +56,21 @@ async function cmdInstall(args) {
     operator: args.operator,
     reporter: args.reporter,
   });
+
+  // Write config.yaml (seed from profile templates, overlay explicit flags).
+  const cfgOut = args["config-out"]
+    ?? join(homedir(), ".pi", "agent", "vibehack", "config.yaml");
+  const cfg = defaultConfig(profile.profile);
+  cfg.models.planner = profile.planner;
+  cfg.models.operator = profile.operator;
+  cfg.models.reporter = profile.reporter;
+  writeConfig(cfgOut, cfg);
+  console.log(`✓ config written: ${cfgOut}`);
+
+  if (dryRun) {
+    console.log(`(dry-run: skipping settings.json + npm package registration)`);
+    return;
+  }
 
   await addPackage(settingsPath, `npm:${PKG.name}@${PKG.version}`);
   await addPackage(settingsPath, "npm:pi-prompt-template-model@^0.9.0");
