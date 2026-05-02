@@ -84,8 +84,10 @@ main() {
   fi
 
   yellow "→ installing pi-vibehack ($NPM_PKG)..."
-  # Forward any caller-supplied flags (e.g., --profile, --planner, --local)
-  install_with_retry "pi-vibehack install" npx -y "$NPM_PKG" install "$@"
+  # Forward any caller-supplied flags (e.g., --profile, --planner, --local).
+  # Use --package + -- to disambiguate: package is @m4xx101/vibeshack but the
+  # exposed bin is `pi-vibehack`, so a bare `npx -y <pkg> install` confuses npx.
+  install_with_retry "pi-vibehack install" npx -y --package="$NPM_PKG" -- pi-vibehack install "$@"
   echo
 
   green "✓ pi-vibehack installed"
