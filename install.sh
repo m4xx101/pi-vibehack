@@ -13,6 +13,8 @@
 set -euo pipefail
 
 NPM_PKG="@m4xx101/vibeshack"
+# Track which dist-tag to install. v1.1 ships under `rc` until promoted to `latest`.
+NPM_TAG="${VIBEHACK_NPM_TAG:-rc}"
 PI_PKG="@mariozechner/pi-coding-agent"
 REPO="https://github.com/m4xx101/pi-vibehack"
 
@@ -87,7 +89,7 @@ main() {
   # Forward any caller-supplied flags (e.g., --profile, --planner, --local).
   # Use --package + -- to disambiguate: package is @m4xx101/vibeshack but the
   # exposed bin is `pi-vibehack`, so a bare `npx -y <pkg> install` confuses npx.
-  install_with_retry "pi-vibehack install" npx -y --package="$NPM_PKG" -- pi-vibehack install "$@"
+  install_with_retry "pi-vibehack install" npx -y --package="${NPM_PKG}@${NPM_TAG}" -- pi-vibehack install "$@"
   echo
 
   green "✓ pi-vibehack installed"
