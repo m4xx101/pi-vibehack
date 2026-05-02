@@ -7,3 +7,6 @@ dist/
 coverage/
 .pi/
 tmp/
+
+# Claude Code local config
+.claude/
