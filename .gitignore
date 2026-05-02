@@ -16,3 +16,6 @@ RESUME.md
 
 # Internal planning artifacts (not for public consumption)
 docs/superpowers/
+
+# Internal release notes with dogfood gates + acceptance caveats — public sees CHANGELOG.md
+docs/RELEASE-NOTES-*.md
