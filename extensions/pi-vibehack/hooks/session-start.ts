@@ -10,14 +10,24 @@ import { registerProvidersFromConfig } from "./register-providers.ts";
 
 export function registerSessionStartHook(pi: any) {
   pi.on("session_start", async (_event: any, ctx: any) => {
-    // Best-effort: register custom providers from ~/.pi/agent/vibehack/config.yaml.
-    // Wrapped in try/catch so a bad config never blocks session_start.
+    // Read vibehack config once; both provider registration and soft-dep prompt use it.
+    let cfg: any = null;
     try {
       const os = await import("node:os");
       const path = await import("node:path");
       const { readConfig } = await import("../lib/config-runtime.ts");
       const cfgPath = path.join(os.homedir(), ".pi", "agent", "vibehack", "config.yaml");
-      const cfg = readConfig(cfgPath);
+      cfg = readConfig(cfgPath);
+    } catch (e: any) {
+      ctx?.ui?.notify?.(
+        `pi-vibehack: config load skipped (${e?.message ?? String(e)})`,
+        "warn",
+      );
+    }
+
+    // Best-effort: register custom providers from ~/.pi/agent/vibehack/config.yaml.
+    // Wrapped in try/catch so a bad config never blocks session_start.
+    try {
       if (cfg) registerProvidersFromConfig(pi, cfg);
     } catch (e: any) {
       ctx?.ui?.notify?.(
@@ -48,15 +58,7 @@ export function registerSessionStartHook(pi: any) {
       );
 
       // Soft-dep handling: batch auto-install when enabled, else legacy advisory banners.
-      let autoInstallEnabled = false;
-      try {
-        const os = await import("node:os");
-        const path = await import("node:path");
-        const { readConfig } = await import("../lib/config-runtime.ts");
-        const cfgPath = path.join(os.homedir(), ".pi", "agent", "vibehack", "config.yaml");
-        const cfg = readConfig(cfgPath);
-        autoInstallEnabled = cfg?.auto_install?.enabled === true;
-      } catch {}
+      const autoInstallEnabled = cfg?.auto_install?.enabled === true;
 
       if (autoInstallEnabled) {
         try {
