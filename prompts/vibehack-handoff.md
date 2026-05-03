@@ -1,9 +1,6 @@
 ---
-description: Generate a hand-off prompt for cross-session or cross-engagement transfer
-model: claude-haiku-4-5
-thinking: low
-skill: planner-recipes
-restore: true
+description: Generate cross-session/cross-engagement handoff prompt
+restore: false
 ---
 
-Generate a hand-off prompt for engagement $1 (or current if blank). Include: open hypotheses, recent evidence, active auth profiles, recommended next test. Save to `engagements/<id>/handoff.md` and print to stdout.
+(Handled by the extension's command handler. Reads recent confirmed leaves + open hypotheses, writes `<engagement>/handoff.md`, prints summary.)
