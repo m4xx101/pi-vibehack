@@ -13,6 +13,14 @@
 
 set -euo pipefail
 
+# Guard against shells sitting in a deleted directory (common after rm -rf of a
+# previous install). Every npm spawn inherits cwd; if cwd doesn't exist, npm
+# crashes with `ENOENT: uv_cwd`. Move to $HOME (or /tmp) before doing anything.
+if ! pwd >/dev/null 2>&1; then
+  cd "${HOME:-/tmp}" 2>/dev/null || cd /tmp
+  echo "(installer: cwd was deleted — moved to $(pwd))"
+fi
+
 NPM_PKG="@m4xx101/vibeshack"
 PI_PKG="@mariozechner/pi-coding-agent"
 REPO="https://github.com/m4xx101/pi-vibehack"
