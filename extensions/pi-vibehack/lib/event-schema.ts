@@ -1,20 +1,19 @@
-import { FormatRegistry, Type, type Static } from "@sinclair/typebox";
+import { Type, type Static } from "@sinclair/typebox";
 
-// Strict ISO 8601 date-time validator with timezone designator.
+// Strict ISO 8601 date-time pattern with timezone designator.
 // Accepts: 2026-04-29T10:23:45Z, 2026-04-29T10:23:45.123Z, 2026-04-29T10:23:45+02:00.
 // Rejects: bare dates, locale strings, missing timezone.
-// Registered once at module load so Type.String({ format: "date-time" }) checks succeed.
-const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/;
-if (!FormatRegistry.Has("date-time")) {
-  FormatRegistry.Set("date-time", (value) => {
-    if (typeof value !== "string" || !ISO_8601.test(value)) return false;
-    const d = new Date(value);
-    return !Number.isNaN(d.getTime());
-  });
-}
+//
+// Applied via Type.String({ pattern: ... }) instead of FormatRegistry.Set to stay
+// portable across @sinclair/typebox 0.32 AND pi-mono's bundled `typebox` 1.x
+// (which aliases @sinclair/typebox imports to a different library lacking
+// FormatRegistry). Pattern-based validation is universally supported by both.
+const ISO_8601_PATTERN = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})$";
+
+const TS_FIELD = () => Type.String({ pattern: ISO_8601_PATTERN });
 
 export const EvidenceSchema = Type.Object({
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
   kind: Type.String(),
   ref: Type.String(),
   summary: Type.String(),
@@ -36,7 +35,7 @@ export const EventTypes = [
 // Cross-field invariants (e.g. confirm requires non-empty evidence) belong in
 // validateEvent() (Task 3.2), not here — typebox can't express them statically.
 export const LegacyEventSchema = Type.Object({
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
   engagement_id: Type.String(),
   event: Type.Union(EventTypes.map((t) => Type.Literal(t))),
   node_id: Type.Optional(Type.String()),
@@ -75,7 +74,7 @@ export const VerificationPassSchema = Type.Object({
   kind: Type.String(),
   verifier: Type.String(),
   evidence_ref: Type.String(),
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
 }, { additionalProperties: false });
 
 export const VerificationFailSchema = Type.Object({
@@ -85,7 +84,7 @@ export const VerificationFailSchema = Type.Object({
   kind: Type.String(),
   verifier: Type.String(),
   reason: Type.String(),
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
 }, { additionalProperties: false });
 
 export const VerificationAdvisorySchema = Type.Object({
@@ -94,7 +93,7 @@ export const VerificationAdvisorySchema = Type.Object({
   node_id: Type.String(),
   kind: Type.String(),
   message: Type.String(),
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
 }, { additionalProperties: false });
 
 export const CanaryPlantedSchema = Type.Object({
@@ -110,7 +109,7 @@ export const CanaryPlantedSchema = Type.Object({
   uuid: Type.String(),
   ref: Type.String(),
   callback_url: Type.Optional(Type.String()),
-  ts: Type.String({ format: "date-time" }),
+  ts: TS_FIELD(),
 }, { additionalProperties: false });
 
 export const EventSchema = Type.Union([

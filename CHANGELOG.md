@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.3 — 2026-05-03
+
+### Fixed
+- **Extension load failure: `Cannot read properties of undefined (reading 'Has')`.** Root cause: pi-mono aliases `@sinclair/typebox` imports to its bundled `typebox` 1.x package (a different library). `FormatRegistry` doesn't exist there. Replaced `FormatRegistry.Set("date-time", ...)` with `Type.String({ pattern: ISO_8601_PATTERN })`, which is portable across both libraries. Strict ISO 8601 validation behavior is preserved.
+
 ## v1.1.2 — 2026-05-03
 
 ### Fixed
