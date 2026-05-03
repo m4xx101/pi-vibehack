@@ -12,7 +12,7 @@ export const recallTool = {
     "Query the cross-engagement knowledge graph (graphify) or fall back to grep over events.jsonl.",
   parameters: recallSchema,
 
-  async execute(_callId: string, params: any) {
+  async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, _ctx?: any) {
     const subs = await recall(params.query);
     const text = subs
       .map((s, i) => {
