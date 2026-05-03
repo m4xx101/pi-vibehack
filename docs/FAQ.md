@@ -90,15 +90,17 @@ Concretely: engagement #2 against `acme.example` starts with the Planner already
 Yes. `--profile local` at install:
 
 ```bash
-npx -y @m4xx101/vibeshack install --profile local
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash -s -- --profile local
 ```
 
 This pins all three roles (Planner/Operator/Reporter) to `qwen-72b-instruct` by default. Override per role:
 
 ```bash
-npx -y @m4xx101/vibeshack install --profile local \
+curl -fsSL .../install.sh | bash -s -- --profile local \
   --planner llama-3.3-70b --operator qwen-72b --reporter mistral-large
 ```
+
+Or after a fresh install, edit `~/.pi/agent/vibehack/config.yaml` directly and run `/vibehack-config sync` to regenerate prompt frontmatter.
 
 Custom local providers (LM Studio, Ollama, vLLM) need to be registered with pi via `pi.registerProvider` — see [`docs/EXTENDING.md`](EXTENDING.md#adding-a-custom-llm-provider).
 

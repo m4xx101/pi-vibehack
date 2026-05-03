@@ -504,16 +504,33 @@ Engagement 2026-05-02-target-example: $1.2347
 ### `/vibehack-update`
 
 **Syntax:** `/vibehack-update`
-**Purpose:** Bump pinned pi-vibehack version in settings.json.
+**Purpose:** Pull the latest `@m4xx101/vibeshack` from npm and re-run install. Preserves config + hand-edits + engagement data.
 
 **Frontmatter:**
 ```yaml
-description: Bump the pinned pi-vibehack version in settings.json
-restore: false
+description: Update pi-vibehack to the latest version (preserves config + hand-edits + engagement data)
+model: claude-haiku-4-5
 ```
 
-**Side effects:**
-- Currently prints the manual upgrade hint (`extensions/pi-vibehack/index.ts:66`): re-run `npx -y @m4xx101/vibeshack install` and `/reload`. The full auto-bump-from-npm path is reserved for v1.1.
+**What it does:**
+1. Runs `pi-vibehack update` — equivalent to `npm install -g @m4xx101/vibeshack@latest && pi-vibehack install`
+2. Re-execs the freshly-installed binary so the NEW version's install logic runs (not the stale loaded one)
+3. Preflight pi-dcp gets re-pinned to its current exact version
+4. Prompt frontmatter regenerated from current `config.yaml.models` — hand-edits to non-`model:` lines are preserved
+5. After completion, restart pi or `/reload` to load the new version
+
+**What it preserves:**
+- `~/.pi/agent/vibehack/config.yaml`
+- Hand-edited prompt frontmatter (only the `model:` line gets rewritten by role)
+- `~/.pi/agent/vibehack/engagements/` — all engagement events.jsonl + AGENTS.md + evidence
+- `~/.pi/agent/vibehack/skills/learned/` — Layer B refined recipes (operator-owned files protected)
+- `~/.pi/agent/vibehack/.capabilities.json` — Kali tool cache
+
+**Equivalent shell command:**
+```bash
+pi-vibehack update                # one-shot
+pi-vibehack --version             # check current version
+```
 
 **Examples:**
 ```

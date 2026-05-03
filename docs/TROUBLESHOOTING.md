@@ -364,6 +364,37 @@ source ~/.bashrc
 which pi   # should now show ~/.nvm/.../bin/pi or similar Linux path
 ```
 
+## `getcwd: cannot access parent directories: No such file or directory`
+
+Your shell is sitting in a directory that no longer exists (commonly after `rm -rf` of a previous install or repo). Every npm spawn inherits cwd; if cwd is gone, npm crashes with `ENOENT: uv_cwd` before doing anything.
+
+Fix:
+
+```bash
+cd ~
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
+```
+
+`install.sh` v1.1.5+ also detects this and auto-recovers by `cd $HOME` at startup.
+
+---
+
+## Updating an existing install
+
+```bash
+pi-vibehack update
+```
+
+Or from inside pi: `/vibehack-update`. Preserves config, hand-edits, engagement data — see [INSTALL.md § Updating](INSTALL.md#updating).
+
+If `pi-vibehack` isn't on PATH (e.g., you removed it manually), reinstall via the curl-pipe:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
+```
+
+---
+
 ## Auditing the install (optional)
 
 ```bash

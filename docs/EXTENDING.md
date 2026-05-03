@@ -309,7 +309,7 @@ After landing any new recipe, specialist, prompt, hook, DCP rule, or extension c
 
 This is hot-reload — pi re-discovers skills + re-loads extensions. No `pi` restart required.
 
-For changes to extensions in the npm package itself (e.g., you edited `extensions/pi-vibehack/index.ts`), you'll need to restart pi or run `npx -y @m4xx101/vibeshack install` again so npm picks up the new package.
+For changes to extensions in the npm package itself (e.g., you edited `extensions/pi-vibehack/index.ts`), run `pi-vibehack update` (or `/vibehack-update` from inside pi) to pull the latest published version and re-run install. For local development against a checked-out clone, use `npm install -g .` from the repo root and `/reload` in pi.
 
 ## Versioning your extensions
 

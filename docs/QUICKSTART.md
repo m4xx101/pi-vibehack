@@ -22,20 +22,24 @@ If you don't have an Anthropic API key (or whichever provider you use) configure
 ## 2. Install pi-vibehack
 
 ```bash
-npx -y @m4xx101/vibeshack install
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
 ```
+
+(Or `npm i -g @m4xx101/vibeshack && pi-vibehack install` if you prefer to skip the curl-pipe.)
 
 This:
 
-- Verifies pi is on PATH (exits with a hint if not).
-- Adds `npm:@m4xx101/vibeshack@<pinned>` to `~/.pi/agent/settings.json` (idempotent).
-- Adds the two hard deps (`pi-prompt-template-model`, `@zenobius/pi-dcp`).
-- Creates `~/.pi/agent/vibehack/` skeleton (lessons.jsonl, AGENTS.md, graph/, tools/, specialists/learned/).
-- Writes `.profile` with the model triplet for the chosen profile (default `hybrid`).
-- Rewrites prompt frontmatter to pin the resolved models (per-role overrides honored).
+- Verifies pi is on PATH.
+- Preflight-installs `@zenobius/pi-dcp@<exact>` with `--ignore-scripts` (bypasses upstream postinstall bug) and pins the exact version in `settings.json`.
+- Adds `npm:@m4xx101/vibeshack@<version>` and `npm:pi-prompt-template-model@^0.9.0` to `~/.pi/agent/settings.json` (idempotent).
+- Creates `~/.pi/agent/vibehack/` skeleton (lessons.jsonl, AGENTS.md, graph/, skills/learned/, specialists/learned/, .capabilities.json).
+- Writes `~/.pi/agent/vibehack/config.yaml` from the chosen profile (default `hybrid`).
+- Rewrites prompt frontmatter to pin the resolved models (per-role overrides honored, hand-edits to non-`model:` lines preserved).
 - Prints the authorized-testing-only disclaimer.
 
 Restart pi or `/reload`.
+
+To update later: `pi-vibehack update` or `/vibehack-update`.
 
 ---
 

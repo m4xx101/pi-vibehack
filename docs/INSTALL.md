@@ -217,28 +217,50 @@ For sensitive engagements where data must not egress, **`--profile local` is the
 
 ## Updating
 
-In a pi session:
+### From shell
+
+```bash
+pi-vibehack update
+```
+
+One command. Pulls the latest `@m4xx101/vibeshack` from the `latest` dist-tag and re-runs `pi-vibehack install` (idempotent). Re-execs the freshly-installed binary so the new version's install logic runs.
+
+### From inside pi
 
 ```
 /vibehack-update
 ```
 
-This currently prints the manual update one-liner (the command handler in `extensions/pi-vibehack/index.ts:66` is intentionally minimal). Run:
+Same operation. After completion, restart pi or `/reload` to load the new version.
+
+### What gets preserved
+
+- `~/.pi/agent/vibehack/config.yaml` (model assignments + thresholds + provider config)
+- Hand-edited prompt frontmatter (only the `model:` line per role group gets rewritten)
+- `~/.pi/agent/vibehack/engagements/` — all engagement state, events.jsonl, evidence, pinned facts
+- `~/.pi/agent/vibehack/skills/learned/` — Layer B reflection output (operator-edited recipes are auto-detected and never clobbered)
+- `~/.pi/agent/vibehack/.capabilities.json` — Kali tool cache (refresh with `/vibehack-rescan-kali`)
+
+### What gets refreshed
+
+- `@m4xx101/vibeshack` package itself
+- `~/.pi/agent/settings.json` package list (exact pi-dcp version re-pinned via preflight)
+- Prompt frontmatter `model:` lines (regenerated from current `config.yaml`)
+
+### Sanity check
 
 ```bash
-npx -y @m4xx101/vibeshack install
+pi-vibehack --version
 ```
 
-This re-runs install (idempotent), bumps the pinned version, and re-resolves the profile. After install, `/reload` in pi.
-
-The installer is **idempotent**: rerunning with the same flags is a no-op for `settings.json` and rewrites the profile + frontmatter only if changed.
+The installer is **idempotent**: rerunning is safe at any time. It compares state and only writes what changed.
 
 ---
 
 ## Uninstalling
 
 ```bash
-npx -y @m4xx101/vibeshack uninstall
+pi-vibehack uninstall
 ```
 
 What's removed:
