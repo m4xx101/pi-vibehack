@@ -75,6 +75,34 @@ export async function npmInstallWithRetry(args, opts = {}) {
   return code;
 }
 
+// Always-run preflight: globally install @zenobius/pi-dcp@^0.1.0 with --ignore-scripts
+// so pi-mono's lazy install at boot finds it cached. If preflight succeeds, register
+// pi-dcp in settings.json. If preflight fails (offline, registry down, network error),
+// skip the settings entry — pi will boot without DCP rather than crashing on the broken
+// postinstall.
+async function preflightPiDcp(settingsPath) {
+  console.log(`→ preflight: installing @zenobius/pi-dcp (with --ignore-scripts to bypass upstream postinstall bug)...`);
+  const { spawn } = await import("node:child_process");
+  const log = [];
+  const code = await new Promise((resolve) => {
+    const c = spawn("npm", ["install", "-g", "@zenobius/pi-dcp@^0.1.0", "--ignore-scripts"], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+    });
+    c.stdout.on("data", (b) => log.push(b.toString()));
+    c.stderr.on("data", (b) => log.push(b.toString()));
+    c.on("error", () => resolve(1));
+    c.on("close", (rc) => resolve(rc ?? 1));
+  });
+  if (code === 0) {
+    await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
+    console.log(`✓ pi-dcp preflight succeeded; registered in settings`);
+  } else {
+    console.warn(`⚠ pi-dcp preflight install failed (exit ${code}); pi will boot without Dynamic Context Pruning.`);
+    console.warn(`  Logs: ${log.join("").split("\n").slice(-5).join("\n  ")}`);
+  }
+}
+
 async function cmdInstall(args) {
   const dryRun = !!args["dry-run"];
   if (!dryRun && !(await verifyPiInstalled())) {
@@ -113,20 +141,12 @@ async function cmdInstall(args) {
   await addPackage(settingsPath, `npm:${PKG.name}@${PKG.version}`);
   await addPackage(settingsPath, "npm:pi-prompt-template-model@^0.9.0");
 
-  // @zenobius/pi-dcp is OPT-IN. Its transitive @stacksjs/clarity has a broken
-  // postinstall (`bunx git-hooks` ENOENT) that crashes pi-mono when it lazy-installs.
-  // Default: skip. Operators who want DCP pass --with-dcp; we preflight-install
-  // it globally with --ignore-scripts so pi-mono's later spawn finds it cached.
-  if (args["with-dcp"]) {
-    console.log(`→ preflight-installing @zenobius/pi-dcp@^0.1.0 with --ignore-scripts...`);
-    const code = await npmInstallWithRetry(["install", "-g", "@zenobius/pi-dcp@^0.1.0", "--ignore-scripts"]);
-    if (code !== 0) {
-      console.error(`✗ pi-dcp preflight install failed (exit ${code}). Continuing without DCP.`);
-    } else {
-      await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
-      console.log(`✓ pi-dcp registered (opt-in via --with-dcp)`);
-    }
-  }
+  // @zenobius/pi-dcp's transitive @stacksjs/clarity has a broken postinstall
+  // (`bunx git-hooks` ENOENT). pi-mono lazy-installs settings packages at boot
+  // and would crash. Preflight-install pi-dcp globally with --ignore-scripts
+  // FIRST — pi-mono's later spawn finds it cached and skips the postinstall.
+  // No user flag, no decision, no opt-in. Just works.
+  await preflightPiDcp(settingsPath);
 
   const dataDir = vibehackDir(args["data-dir"]);
   await ensureDataDir(dataDir);

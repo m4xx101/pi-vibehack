@@ -6,7 +6,7 @@
 #
 # With flags:
 #   curl -fsSL .../install.sh | bash -s -- --profile local
-#   curl -fsSL .../install.sh | bash -s -- --with-dcp     # opt into Dynamic Context Pruning
+#   curl -fsSL .../install.sh | bash -s -- --planner gpt-5 --operator claude-opus-4-7
 #
 # Inspect first if you prefer:
 #   curl -fsSL .../install.sh | less

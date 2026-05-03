@@ -334,21 +334,19 @@ npx -y @m4xx101/vibeshack install
 
 Engagement data at `~/.pi/agent/vibehack/engagements/` is preserved across uninstall.
 
-## `bunx git-hooks` postinstall failure (pi-dcp)
+## `bunx git-hooks` postinstall failure (handled automatically)
 
-`@zenobius/pi-dcp` (Dynamic Context Pruning) has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). This crashed pi at boot in earlier rcs because pi-mono lazy-installs settings.json packages.
+`@zenobius/pi-dcp` (Dynamic Context Pruning) has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). This used to crash pi at boot because pi-mono lazy-installs settings.json packages.
 
-**v1.1.0+ does NOT ship pi-dcp by default.** Your install succeeds without it. v1.1's headline features (reflection, evolve, Kali, browser-verifier, canaries) do not depend on DCP.
+**v1.1.0+ handles this automatically.** Every install runs a preflight step:
 
-To opt into DCP, pass `--with-dcp`:
+1. `npm install -g @zenobius/pi-dcp@^0.1.0 --ignore-scripts` (skips the broken postinstall)
+2. Add pi-dcp to `~/.pi/agent/settings.json`
+3. When pi boots, it sees pi-dcp is already globally installed at the right version and skips its own install attempt
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash -s -- --with-dcp
-```
+Result: no operator action required. If preflight fails (offline / registry down), pi-dcp is silently skipped and pi boots without Dynamic Context Pruning rather than crashing.
 
-The installer preflight-installs pi-dcp with `--ignore-scripts` BEFORE adding it to pi's settings.json, so pi's lazy install at boot finds it cached and doesn't re-trigger the broken postinstall.
-
-If you hit the same error installing pi-mono manually:
+If you hit the same `bunx git-hooks` error installing pi-mono manually:
 
 ```bash
 npm install -g @mariozechner/pi-coding-agent --ignore-scripts

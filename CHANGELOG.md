@@ -3,7 +3,7 @@
 ## v1.1.0 — 2026-05-03
 
 ### Install UX
-- Drop `@zenobius/pi-dcp` from default install — its transitive `@stacksjs/clarity` postinstall (`bunx git-hooks` ENOENT) crashed pi at boot. Opt-in via `--with-dcp`; the installer preflight-installs DCP with `--ignore-scripts` before adding it to settings.
+- Always preflight-install `@zenobius/pi-dcp@^0.1.0 --ignore-scripts` (bypassing the broken `bunx git-hooks` upstream postinstall) BEFORE registering it in `settings.json`. pi-mono's lazy install at boot finds it cached and never crashes. No user flag, no opt-in. Just works.
 - `install.sh` now ships a polished UX: ASCII π banner, 5-step indicator, colored status lines, WSL PATH-shadowing detection, detect-and-retry on transitive postinstall failures.
 - `bin/install.js` accepts `--with-dcp` flag, executable bit set on all `bin/*.js`.
 - `@sinclair/typebox` moved from devDependencies → dependencies (extension runtime needs `FormatRegistry`).

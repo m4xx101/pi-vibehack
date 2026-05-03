@@ -110,9 +110,6 @@ Works without npm registry access if you mirror the repo internally.
 # Pick a model profile (hybrid is default):
 curl -fsSL .../install.sh | bash -s -- --profile local
 curl -fsSL .../install.sh | bash -s -- --planner gpt-5 --operator claude-opus-4-7
-
-# Opt into Dynamic Context Pruning (preflight-installs pi-dcp with --ignore-scripts):
-curl -fsSL .../install.sh | bash -s -- --with-dcp
 ```
 
 > 💡 If install fails or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
