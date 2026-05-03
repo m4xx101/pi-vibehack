@@ -75,11 +75,19 @@ export async function npmInstallWithRetry(args, opts = {}) {
   return code;
 }
 
-// Always-run preflight: globally install @zenobius/pi-dcp@^0.1.0 with --ignore-scripts
-// so pi-mono's lazy install at boot finds it cached. If preflight succeeds, register
-// pi-dcp in settings.json. If preflight fails (offline, registry down, network error),
-// skip the settings entry — pi will boot without DCP rather than crashing on the broken
-// postinstall.
+// Always-run preflight: globally install @zenobius/pi-dcp with --ignore-scripts
+// so pi-mono's lazy install at boot is a no-op.
+//
+// CRITICAL: pi-mono's needs-install check (dist/core/package-manager.js
+// `installedNpmMatchesPinnedVersion`) uses STRING EQUALITY between the spec's
+// version literal and the on-disk package.json "version". Pinning a semver range
+// like "^0.1.0" means the equality NEVER holds against the resolved version
+// "0.1.3", so pi-mono re-runs `npm install -g <pkg>@^0.1.0` on every boot,
+// re-triggering the broken @stacksjs/clarity bunx-git-hooks postinstall.
+//
+// FIX: after preflight, read the EXACT resolved version from disk and pin
+// settings.json to `npm:@zenobius/pi-dcp@<exact>`. pi-mono's equality check
+// then succeeds; lazy install is skipped; postinstall never runs.
 async function preflightPiDcp(settingsPath) {
   console.log(`→ preflight: installing @zenobius/pi-dcp (with --ignore-scripts to bypass upstream postinstall bug)...`);
   const { spawn } = await import("node:child_process");
@@ -94,13 +102,28 @@ async function preflightPiDcp(settingsPath) {
     c.on("error", () => resolve(1));
     c.on("close", (rc) => resolve(rc ?? 1));
   });
-  if (code === 0) {
-    await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
-    console.log(`✓ pi-dcp preflight succeeded; registered in settings`);
-  } else {
+  if (code !== 0) {
     console.warn(`⚠ pi-dcp preflight install failed (exit ${code}); pi will boot without Dynamic Context Pruning.`);
     console.warn(`  Logs: ${log.join("").split("\n").slice(-5).join("\n  ")}`);
+    return;
   }
+
+  // Resolve EXACT installed version so pi-mono's string-equality check passes.
+  let exactVersion;
+  try {
+    const { execSync } = await import("node:child_process");
+    const prefix = execSync("npm root -g", { encoding: "utf8" }).trim();
+    const pkgJsonPath = join(prefix, "@zenobius", "pi-dcp", "package.json");
+    const installed = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+    exactVersion = installed.version;
+  } catch (e) {
+    console.warn(`⚠ pi-dcp installed but couldn't resolve exact version (${e.message}); falling back to range.`);
+    await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
+    return;
+  }
+
+  await addPackage(settingsPath, `npm:@zenobius/pi-dcp@${exactVersion}`);
+  console.log(`✓ pi-dcp preflight succeeded; pinned exact ${exactVersion} in settings (skips pi-mono's lazy reinstall)`);
 }
 
 async function cmdInstall(args) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.2 — 2026-05-03
+
+### Fixed
+- **pi boot crash on missing pi-dcp postinstall (root-cause fix).** pi-mono's `installedNpmMatchesPinnedVersion` does string equality between settings.json's spec version and the installed package version. Pinning a semver range (`^0.1.0`) never equals the resolved version (`0.1.3`), so pi-mono re-ran `npm install -g @zenobius/pi-dcp@^0.1.0` on every boot, re-triggering the broken `@stacksjs/clarity` `bunx git-hooks` postinstall. v1.1.2 resolves the exact installed version after preflight and pins it in settings (`npm:@zenobius/pi-dcp@0.1.3`). pi-mono's equality check now succeeds, lazy install is skipped entirely, postinstall never fires.
+
 ## v1.1.0 — 2026-05-03
 
 ### Install UX
