@@ -5,7 +5,7 @@ import { appendEvent, nowIso } from "../lib/events.ts";
 export const pruneSchema = Type.Object({
   node_id: Type.String(),
   reason: Type.String(),
-});
+}, { additionalProperties: false });
 
 export const pruneTool = {
   name: "vibehack_prune",

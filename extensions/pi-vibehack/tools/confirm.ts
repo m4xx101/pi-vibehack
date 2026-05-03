@@ -6,7 +6,7 @@ export const confirmSchema = Type.Object({
   node_id: Type.String(),
   poc_summary: Type.String(),
   evidence_refs: Type.Array(Type.String()),
-});
+}, { additionalProperties: false });
 
 export const confirmTool = {
   name: "vibehack_confirm",

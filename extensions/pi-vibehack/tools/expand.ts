@@ -13,7 +13,7 @@ export const expandSchema = Type.Object({
   confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
   requires_browser: Type.Optional(Type.Boolean()),
   rationale: Type.String(),
-});
+}, { additionalProperties: false });
 
 export const expandTool = {
   name: "vibehack_expand",

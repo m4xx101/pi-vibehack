@@ -7,7 +7,7 @@ export const evidenceSchema = Type.Object({
   kind: Type.String(),
   ref: Type.String(),
   summary: Type.String(),
-});
+}, { additionalProperties: false });
 
 export const evidenceTool = {
   name: "vibehack_evidence",

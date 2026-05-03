@@ -8,10 +8,10 @@ export const proposeChainSchema = Type.Object({
     node_id: Type.String(),
     next_test: Type.String(),
     expected_outcome: Type.String(),
-  })),
+  }, { additionalProperties: false })),
   rationale: Type.String(),
   is_destructive: Type.Boolean(),
-});
+}, { additionalProperties: false });
 
 export const proposeChainTool = {
   name: "vibehack_propose_chain",

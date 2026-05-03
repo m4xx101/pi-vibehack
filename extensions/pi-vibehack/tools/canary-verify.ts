@@ -28,7 +28,7 @@ export const canaryVerifySchema = Type.Object({
     Type.Literal("open-redirect"),
     Type.Literal("DNS"),
   ]),
-});
+}, { additionalProperties: false });
 
 export const canaryVerifyTool = {
   name: "vibehack_canary_verify",

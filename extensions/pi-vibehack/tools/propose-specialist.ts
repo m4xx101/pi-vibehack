@@ -6,7 +6,7 @@ export const proposeSpecialistSchema = Type.Object({
   node_id: Type.String(),
   specialist_kind: Type.String(),
   rationale: Type.String(),
-});
+}, { additionalProperties: false });
 
 export const proposeSpecialistTool = {
   name: "vibehack_propose_specialist",

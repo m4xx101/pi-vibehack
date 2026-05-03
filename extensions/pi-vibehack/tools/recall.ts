@@ -3,7 +3,7 @@ import { recall } from "../graph/recall.ts";
 
 export const recallSchema = Type.Object({
   query: Type.String({ minLength: 1 }),
-});
+}, { additionalProperties: false });
 
 export const recallTool = {
   name: "vibehack_recall",
