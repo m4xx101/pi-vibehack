@@ -11,6 +11,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { readEvents } from "./events.ts";
+import { asString } from "./coerce.ts";
 
 export interface Leaf {
   kind: string;
@@ -52,7 +53,7 @@ function isOperatorOwned(filePath: string): boolean {
 }
 
 export function extractSignature(leaf: Leaf): string {
-  const surfaceClean = (leaf.surface ?? "").split("?")[0];
+  const surfaceClean = asString(leaf.surface).split("?")[0];
   return [
     leaf.kind || "_",
     leaf.recipe ?? "_",
@@ -74,8 +75,9 @@ export function clusterBySignature(leaves: Leaf[], minCardinality = 2): Cluster[
 }
 
 // RESUME deviation #15: empty/all-symbol input → "untargeted" (NOT empty string).
-function slugify(input: string): string {
-  const cleaned = (input ?? "")
+function slugify(input: unknown): string {
+  const s = asString(input);
+  const cleaned = s
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
