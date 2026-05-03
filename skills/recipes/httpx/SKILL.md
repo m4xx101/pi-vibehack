@@ -1,5 +1,5 @@
 ---
-name: httpx-recipes
+name: httpx
 description: HTTP probing at scale via projectdiscovery/httpx.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: osint-specialist
+name: osint
 description: Specialist for open-source intelligence — domain history, leaked credentials, employee enumeration, infrastructure mapping.
 ---
 

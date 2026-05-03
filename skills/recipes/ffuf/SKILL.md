@@ -1,5 +1,5 @@
 ---
-name: ffuf-recipes
+name: ffuf
 description: Fuzzing endpoints, params, and vhosts via ffuf.
 ---
 

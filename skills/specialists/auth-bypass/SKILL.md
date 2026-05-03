@@ -1,5 +1,5 @@
 ---
-name: auth-bypass-specialist
+name: auth-bypass
 description: Specialist for authentication-bypass attempts — JWT tampering, OAuth flow analysis, session-fixation, cookie tricks.
 ---
 

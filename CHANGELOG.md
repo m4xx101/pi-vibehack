@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.4 — 2026-05-03
+
+### Fixed
+- **Skill conflicts at pi boot.** pi-mono enforces that a `SKILL.md`'s `name:` frontmatter must match its parent directory. Renamed all 14 shipped skill names to match: `curl-recipes` → `curl`, `auth-bypass-specialist` → `auth-bypass`, etc. (9 recipes + 5 specialists). No behavioral change; only frontmatter `name:` field renamed.
+- `install.sh` guards against deleted cwd (`getcwd: ENOENT`) by `cd $HOME` at startup.
+
 ## v1.1.3 — 2026-05-03
 
 ### Fixed

@@ -1,5 +1,5 @@
 ---
-name: web-recon-specialist
+name: web-recon
 description: Specialist prompt for an Operator subprocess running a web-recon leaf — subdomain enum, tech fingerprint, surface mapping.
 ---
 

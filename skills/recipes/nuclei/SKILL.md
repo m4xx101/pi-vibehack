@@ -1,5 +1,5 @@
 ---
-name: nuclei-recipes
+name: nuclei
 description: Template-driven vuln scanning via projectdiscovery/nuclei.
 ---
 

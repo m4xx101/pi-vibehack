@@ -1,5 +1,5 @@
 ---
-name: nmap-recipes
+name: nmap
 description: Port + service scanning via nmap.
 ---
 

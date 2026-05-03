@@ -1,5 +1,5 @@
 ---
-name: surf-cli-recipes
+name: surf-cli
 description: Chrome control via nicobailon/surf-cli. Loaded when surf-cli is detected.
 ---
 

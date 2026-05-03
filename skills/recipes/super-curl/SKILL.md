@@ -1,5 +1,5 @@
 ---
-name: super-curl-recipes
+name: super-curl
 description: HTTP/auth recipes via pi-super-curl /scurl. Auto-loaded when pi-super-curl is detected.
 ---
 

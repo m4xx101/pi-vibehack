@@ -1,5 +1,5 @@
 ---
-name: binary-recon-specialist
+name: binary-recon
 description: Specialist for binary/CTF reverse engineering — entrypoint mapping, function signatures, vulnerability classes.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: curl-recipes
+name: curl
 description: HTTP probing recipes via curl. Use when pi-super-curl is not installed.
 ---
 

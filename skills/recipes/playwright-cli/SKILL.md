@@ -1,5 +1,5 @@
 ---
-name: playwright-cli-recipes
+name: playwright-cli
 description: Browser automation via Playwright CLI. Used when surf-cli is unavailable.
 ---
 

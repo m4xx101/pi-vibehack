@@ -1,5 +1,5 @@
 ---
-name: searchsploit-recipes
+name: searchsploit
 description: Local CVE/exploit lookup via exploit-db's searchsploit.
 ---
 
