@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
-import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
+import { promises as fs } from "node:fs";
+import { activeEngagementId, engagementDir, newEngagementId, setActiveEngagement } from "../lib/engagement.ts";
 import { appendEvent, nowIso, readEvents, newNodeId } from "../lib/events.ts";
 
 export const expandSchema = Type.Object({
@@ -24,8 +25,30 @@ export const expandTool = {
     if (params.kind !== "root" && (!params.falsifier || params.falsifier.trim().length === 0)) {
       throw new Error("falsifier is required for non-root nodes");
     }
-    const eng = await activeEngagementId();
-    if (!eng) throw new Error("no active engagement (call /vibehack <target> first)");
+    let eng = await activeEngagementId();
+    // Auto-bootstrap on root-expand. The /vibehack <target> slash command renders
+    // a prompt instructing the LLM to call vibehack_expand(parent_id:null, kind:"root",
+    // claim:"engagement: <target>", ...). We use that root call as the engagement
+    // boot signal: derive the engagement id from the claim, create the dir, write
+    // the .active marker, emit engagement_start.
+    if (!eng) {
+      if (params.kind !== "root" || params.parent_id !== null) {
+        throw new Error("no active engagement (call /vibehack <target> first)");
+      }
+      const target = String(params.claim ?? "")
+        .replace(/^engagement:\s*/i, "")
+        .trim() || "untargeted";
+      eng = newEngagementId(target);
+      await fs.mkdir(engagementDir(eng), { recursive: true });
+      await setActiveEngagement(eng);
+      await appendEvent(engagementDir(eng), {
+        ts: nowIso(),
+        engagement_id: eng,
+        event: "engagement_start",
+        metadata: { target },
+      } as any);
+      ctx?.ui?.notify?.(`engagement started: ${eng}`, "info");
+    }
     const dir = engagementDir(eng);
     const events = await readEvents(dir);
     const siblingCount = events.filter((e) => e.event === "node_add" && e.parent_id === params.parent_id).length;

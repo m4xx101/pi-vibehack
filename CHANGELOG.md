@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.6 — 2026-05-03
+
+### Fixed
+- **Extension crash on every prompt: `(modelId ?? "").toLowerCase is not a function`.** pi-mono passes the model as either a string id or an object (`{id, name, provider, ...}`); our `detectProvider` assumed string-or-undefined. Hardened to coerce any input via a `modelIdString()` helper that pulls `.id`/`.name`/`.model` from objects before lowercasing.
+- **`vibehack_expand` always rejected with "no active engagement".** Pre-1.1.6, `/vibehack <target>` only rendered the LLM prompt — it never actually bootstrapped an engagement directory or wrote the `.active` marker. Calls to `vibehack_expand(parent_id:null, kind:"root", ...)` would error out forever. Fix: `vibehack_expand` now auto-bootstraps on its first root call (derives engagement id from `claim`, creates the dir, writes `.active`, emits `engagement_start`). The `/vibehack` slash command and the auto-bootstrap path now compose cleanly.
+
 ## v1.1.5 — 2026-05-03
 
 ### Added

@@ -4,8 +4,23 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-export function detectProvider(modelId: string | undefined): "claude" | "codex" | "gemini" | "local" {
-  const m = (modelId ?? "").toLowerCase();
+// Extract a model identifier string from arbitrary inputs. pi-mono passes either a
+// string id directly OR a model object (e.g. { id: "claude-haiku-4-5", ... } or
+// { name, provider, ... }). Coerce defensively so we never call toLowerCase on a
+// non-string and crash the before_agent_start hook.
+function modelIdString(input: unknown): string {
+  if (typeof input === "string") return input;
+  if (input && typeof input === "object") {
+    const obj = input as Record<string, unknown>;
+    if (typeof obj.id === "string") return obj.id;
+    if (typeof obj.name === "string") return obj.name;
+    if (typeof obj.model === "string") return obj.model;
+  }
+  return "";
+}
+
+export function detectProvider(modelId: unknown): "claude" | "codex" | "gemini" | "local" {
+  const m = modelIdString(modelId).toLowerCase();
   if (m.includes("claude")) return "claude";
   if (m.includes("gpt") || m.includes("o3") || m.includes("o4") || m.includes("codex")) return "codex";
   if (m.includes("gemini")) return "gemini";

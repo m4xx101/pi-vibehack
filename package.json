@@ -1,6 +1,6 @@
 {
   "name": "@m4xx101/vibeshack",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Context-aware vibe-hacking harness on pi-mono. Hypothesis-tree REPL, graphify-backed recall, on-the-fly tool synthesis. Authorized testing only.",
   "keywords": [
     "pi-mono",

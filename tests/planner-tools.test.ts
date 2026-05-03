@@ -123,10 +123,23 @@ describe("vibehack_propose_specialist", () => {
 });
 
 describe("active-engagement guard", () => {
-  it("expand throws when no active engagement", async () => {
+  it("non-root expand throws when no active engagement (must call /vibehack first)", async () => {
     await setActiveEngagement(null);
-    await expect(expandTool.execute("c", { parent_id: null, kind: "root", phase: "recon", claim: "x", next_test: "", falsifier: "n/a", rationale: "" } as any, undefined, undefined, fakeCtx))
+    await expect(expandTool.execute("c", { parent_id: "n_1", kind: "surface", phase: "recon", claim: "x", next_test: "", falsifier: "checkable", rationale: "" } as any, undefined, undefined, fakeCtx))
       .rejects.toThrow(/no active engagement/);
+  });
+
+  it("root expand auto-bootstraps the engagement (no /vibehack required)", async () => {
+    await setActiveEngagement(null);
+    const result = await expandTool.execute("c", {
+      parent_id: null, kind: "root", phase: "recon",
+      claim: "engagement: example.com", next_test: "", falsifier: "n/a", rationale: "",
+    } as any, undefined, undefined, fakeCtx);
+    expect(result.details.kind).toBe("root");
+    // After bootstrap, an engagement should exist
+    const { activeEngagementId } = await import("../extensions/pi-vibehack/lib/engagement.ts");
+    const id = await activeEngagementId();
+    expect(id).toMatch(/example-com$/);
   });
 });
 
