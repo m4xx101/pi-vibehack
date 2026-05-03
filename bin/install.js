@@ -193,6 +193,37 @@ async function cmdInstall(args) {
   console.log(`   Do not use against systems you do not own or have explicit written permission to test.\n`);
 }
 
+async function cmdUpdate(args) {
+  // Self-update: pull the latest @m4xx101/vibeshack from npm, then re-run
+  // install (idempotent). Preserves config.yaml, hand-edited prompt frontmatter,
+  // and engagement data; refreshes the package, settings.json package pins,
+  // soft-dep + Kali caches.
+  console.log(`→ pulling latest @m4xx101/vibeshack from npm...`);
+  const { spawn } = await import("node:child_process");
+  const code = await new Promise((resolve) => {
+    const c = spawn("npm", ["install", "-g", "@m4xx101/vibeshack@latest"], {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    c.on("error", () => resolve(1));
+    c.on("close", (rc) => resolve(rc ?? 1));
+  });
+  if (code !== 0) {
+    console.error(`✗ npm install failed (exit ${code}). Aborting update.`);
+    process.exit(code);
+  }
+  console.log(`✓ package updated; re-running install (idempotent — preserves config + hand-edits)...\n`);
+
+  // Re-exec the freshly-installed binary so the install logic that runs is the
+  // NEW version's, not whatever this stale process loaded. spawn pi-vibehack
+  // (now points at the new package) with `install` and forward all flags.
+  const re = spawn("pi-vibehack", ["install", ...process.argv.slice(3)], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  re.on("close", (rc) => process.exit(rc ?? 0));
+}
+
 async function cmdUninstall(args) {
   const settingsPath = resolveSettingsPath(args);
   const dataDir = vibehackDir(args["data-dir"]);
@@ -205,8 +236,10 @@ const args = parseArgs(process.argv.slice(2));
 const cmd = args._[0] ?? "install";
 try {
   if (cmd === "install") await cmdInstall(args);
+  else if (cmd === "update") await cmdUpdate(args);
   else if (cmd === "uninstall") await cmdUninstall(args);
-  else { console.error(`unknown command: ${cmd}`); process.exit(2); }
+  else if (cmd === "--version" || cmd === "-v") { console.log(PKG.version); }
+  else { console.error(`unknown command: ${cmd}\nUsage: pi-vibehack [install|update|uninstall|--version]`); process.exit(2); }
 } catch (e) {
   console.error(`✗ ${e.message}`);
   process.exit(1);

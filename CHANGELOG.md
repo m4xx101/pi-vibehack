@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.5 — 2026-05-03
+
+### Added
+- **`pi-vibehack update`** subcommand — pulls the latest `@m4xx101/vibeshack` from npm, re-runs install (idempotent). Preserves `config.yaml`, hand-edited prompt frontmatter, and engagement data. Re-execs the freshly-installed binary so the new version's install logic runs (not the stale loaded version).
+- **`/vibehack-update`** slash command — same operation from inside pi.
+- **`pi-vibehack --version` / `-v`** — prints package version.
+
 ## v1.1.4 — 2026-05-03
 
 ### Fixed

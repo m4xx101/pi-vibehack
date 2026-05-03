@@ -112,6 +112,14 @@ curl -fsSL .../install.sh | bash -s -- --profile local
 curl -fsSL .../install.sh | bash -s -- --planner gpt-5 --operator claude-opus-4-7
 ```
 
+### Update
+
+```bash
+pi-vibehack update
+```
+
+Or from inside pi: `/vibehack-update`. Pulls the latest `@m4xx101/vibeshack` from npm, re-runs install (idempotent). Preserves `~/.pi/agent/vibehack/config.yaml`, hand-edited prompt frontmatter, and all engagement data.
+
 > 💡 If install fails or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 See [`docs/INSTALL.md`](docs/INSTALL.md) for profile flags, custom local providers, project-scoped installs, and troubleshooting.
