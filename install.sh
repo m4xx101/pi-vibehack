@@ -4,122 +4,171 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
 #
-# Or with flags:
-#   curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash -s -- --profile local
+# With flags:
+#   curl -fsSL .../install.sh | bash -s -- --profile local
+#   curl -fsSL .../install.sh | bash -s -- --with-dcp     # opt into Dynamic Context Pruning
 #
-# Inspect this script before piping if your security posture requires it:
-#   curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | less
+# Inspect first if you prefer:
+#   curl -fsSL .../install.sh | less
 
 set -euo pipefail
 
 NPM_PKG="@m4xx101/vibeshack"
 PI_PKG="@mariozechner/pi-coding-agent"
 REPO="https://github.com/m4xx101/pi-vibehack"
+NPM_TAG="${VIBEHACK_NPM_TAG:-latest}"
 
-red()    { printf "\033[0;31m%s\033[0m\n" "$*"; }
-green()  { printf "\033[0;32m%s\033[0m\n" "$*"; }
-yellow() { printf "\033[0;33m%s\033[0m\n" "$*"; }
-blue()   { printf "\033[0;34m%s\033[0m\n" "$*"; }
+# ── colors ─────────────────────────────────────────────────────────────────
+if [ -t 1 ] && [ "${TERM:-}" != "dumb" ] && [ -z "${NO_COLOR:-}" ]; then
+  C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_BOLD=$'\033[1m'
+  C_RED=$'\033[0;31m'; C_GREEN=$'\033[0;32m'; C_YELLOW=$'\033[0;33m'
+  C_BLUE=$'\033[0;34m'; C_MAGENTA=$'\033[0;35m'; C_CYAN=$'\033[0;36m'
+else
+  C_RESET=""; C_DIM=""; C_BOLD=""
+  C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""; C_MAGENTA=""; C_CYAN=""
+fi
+
+red()    { printf "%s%s%s\n" "$C_RED"     "$*" "$C_RESET"; }
+green()  { printf "%s%s%s\n" "$C_GREEN"   "$*" "$C_RESET"; }
+yellow() { printf "%s%s%s\n" "$C_YELLOW"  "$*" "$C_RESET"; }
+blue()   { printf "%s%s%s\n" "$C_BLUE"    "$*" "$C_RESET"; }
+cyan()   { printf "%s%s%s\n" "$C_CYAN"    "$*" "$C_RESET"; }
+dim()    { printf "%s%s%s\n" "$C_DIM"     "$*" "$C_RESET"; }
+bold()   { printf "%s%s%s\n" "$C_BOLD"    "$*" "$C_RESET"; }
+
+# ── banner ─────────────────────────────────────────────────────────────────
+banner() {
+  printf "\n"
+  printf "%s%s    ╔══════════════════════════════════════════════════════╗%s\n"  "$C_BOLD" "$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║                                                      ║%s\n"   "$C_BOLD" "$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║      π · %sP I - V I B E H A C K%s                       %s║%s\n" \
+         "$C_BOLD" "$C_MAGENTA" "$C_CYAN" "$C_MAGENTA" "$C_BOLD$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║                                                      ║%s\n"   "$C_BOLD" "$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║   %shypothesis-tree harness on pi-mono%s                 %s║%s\n" \
+         "$C_BOLD" "$C_MAGENTA" "$C_DIM$C_RESET" "$C_BOLD$C_MAGENTA" "$C_BOLD$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║   %sself-evolving · canary-verified · context-aware%s   %s║%s\n" \
+         "$C_BOLD" "$C_MAGENTA" "$C_DIM$C_RESET" "$C_BOLD$C_MAGENTA" "$C_BOLD$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ║                                                      ║%s\n"   "$C_BOLD" "$C_MAGENTA" "$C_RESET"
+  printf "%s%s    ╚══════════════════════════════════════════════════════╝%s\n"   "$C_BOLD" "$C_MAGENTA" "$C_RESET"
+  printf "         %srepo:%s %s\n"     "$C_DIM" "$C_RESET" "$REPO"
+  printf "         %snpm: %s %s@%s\n"  "$C_DIM" "$C_RESET" "$NPM_PKG" "$NPM_TAG"
+  printf "\n"
+}
+
+# ── step indicator ─────────────────────────────────────────────────────────
+STEP_NUM=0
+STEP_TOTAL=5
+step() {
+  STEP_NUM=$((STEP_NUM + 1))
+  printf "%s[%d/%d]%s %s%s%s\n" "$C_CYAN" "$STEP_NUM" "$STEP_TOTAL" "$C_RESET" "$C_BOLD" "$*" "$C_RESET"
+}
+ok()    { printf "      %s✓%s %s\n" "$C_GREEN"  "$C_RESET" "$*"; }
+warn()  { printf "      %s⚠%s %s\n" "$C_YELLOW" "$C_RESET" "$*"; }
+fail()  { printf "      %s✗%s %s\n" "$C_RED"    "$C_RESET" "$*"; }
+info()  { printf "      %s%s%s\n"   "$C_DIM"    "$*"       "$C_RESET"; }
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {
-    red "✗ required: $1 not found on PATH"
-    echo "  install: $2"
+    fail "required command not found: $1"
+    info "install hint: $2"
     exit 1
   }
 }
 
-main() {
-  blue "==> pi-vibehack installer"
-  echo "  repo: $REPO"
-  echo "  npm:  $NPM_PKG"
-  echo
-
-  require node "https://nodejs.org (Node 18+)"
-  require npm "comes with Node"
-
-  node_version=$(node -v | sed 's/v//' | cut -d. -f1)
-  if [ "$node_version" -lt 18 ]; then
-    red "✗ Node $node_version is too old; need 18+"
-    exit 1
+# Detect-and-retry wrapper for npm operations that may hit the
+# @stacksjs/clarity bunx-git-hooks postinstall failure.
+install_with_retry() {
+  local label="$1"; shift
+  local logfile; logfile="$(mktemp -t pi-install.XXXXXX.log)"
+  : > "$logfile"
+  if "$@" 2> >(tee -a "$logfile" >&2); then
+    rm -f "$logfile"
+    return 0
   fi
-  green "✓ node $(node -v)"
-
-  # Helper: run a command, on failure detect the @stacksjs/clarity bunx git-hooks
-  # postinstall signature, and retry once with --ignore-scripts if it matches.
-  # Args: <log-label> <cmd> [args...]
-  install_with_retry() {
-    local label="$1"; shift
-    local logfile="/tmp/pi-install.log"
-    : > "$logfile"
-    if "$@" 2> >(tee -a "$logfile" >&2); then
-      return 0
-    fi
-    if grep -qE 'git-hooks|@stacksjs/clarity|postinstall' "$logfile"; then
-      yellow "⚠ ${label} failed due to a known transitive postinstall (bunx git-hooks / @stacksjs/clarity)."
-      yellow "  Retrying with --ignore-scripts (safe — only skips dev-time git-hooks setup, not runtime code)..."
-      # Inject --ignore-scripts after the npm subcommand (install/exec/etc.).
-      # For `npm install -g <pkg>` → `npm install -g --ignore-scripts <pkg>`.
-      # For `npx -y <pkg> install ...` we instead set npm_config_ignore_scripts=true.
-      if [ "$1" = "npm" ]; then
-        local cmd=("$1" "$2")
-        shift 2
-        cmd+=(--ignore-scripts "$@")
-        "${cmd[@]}"
-      else
-        npm_config_ignore_scripts=true "$@"
+  if grep -qE 'git-hooks|@stacksjs/clarity|postinstall' "$logfile"; then
+    warn "$label hit known transitive postinstall failure"
+    info "retrying with --ignore-scripts (safe — only skips dev-time git-hooks setup)"
+    if [ "$1" = "npm" ]; then
+      local cmd=("$1" "$2"); shift 2
+      cmd+=(--ignore-scripts "$@")
+      if "${cmd[@]}"; then
+        rm -f "$logfile"
+        return 0
       fi
     else
-      red "✗ ${label} failed (see $logfile)"
-      return 1
+      if npm_config_ignore_scripts=true "$@"; then
+        rm -f "$logfile"
+        return 0
+      fi
     fi
-  }
+  fi
+  fail "$label failed"
+  info "log: $logfile"
+  return 1
+}
 
+main() {
+  banner
+
+  step "checking prerequisites"
+  require node "https://nodejs.org (Node 18+)"
+  require npm  "ships with Node"
+  node_version=$(node -v | sed 's/v//' | cut -d. -f1)
+  if [ "$node_version" -lt 18 ]; then
+    fail "Node $node_version is too old; need 18+"
+    exit 1
+  fi
+  ok "node $(node -v)"
+  ok "npm  $(npm -v)"
+
+  step "installing pi-mono ($PI_PKG)"
   if command -v pi >/dev/null 2>&1; then
-    green "✓ pi-mono already installed: $(pi --version 2>&1 | head -1 || echo 'detected')"
+    ok "already installed: $(pi --version 2>&1 | head -1 || echo detected)"
   else
-    yellow "→ installing pi-mono ($PI_PKG)..."
     install_with_retry "pi-mono install" npm install -g "$PI_PKG"
-    green "✓ pi-mono installed"
+    ok "installed"
   fi
 
-  yellow "→ installing pi-vibehack ($NPM_PKG)..."
-  # Forward any caller-supplied flags (e.g., --profile, --planner, --local)
-  install_with_retry "pi-vibehack install" npx -y "$NPM_PKG" install "$@"
-  echo
+  step "installing pi-vibehack ($NPM_PKG@$NPM_TAG)"
+  install_with_retry "pi-vibehack install" npm install -g "${NPM_PKG}@${NPM_TAG}"
+  ok "installed: $(pi-vibehack --version 2>&1 | head -1 || echo "@$NPM_TAG")"
 
-  green "✓ pi-vibehack installed"
-  echo
+  step "configuring pi-vibehack"
+  pi-vibehack install "$@"
 
-  # WSL PATH-shadowing detection: inside WSL, Windows pi.exe on /mnt/c/... can
-  # precede the Linux npm global bin and `pi --version` will silently run the
-  # wrong binary. Surface an actionable banner only when we detect the issue.
+  step "post-install checks"
+  # WSL PATH-shadowing detection
   if [ -r /proc/version ] && grep -qi microsoft /proc/version; then
     if command -v pi >/dev/null 2>&1; then
       pi_path="$(command -v pi)"
       case "$pi_path" in
         /mnt/c/*|*.exe)
-          yellow "⚠ WSL: detected Windows pi at $pi_path shadowing the Linux install."
-          echo "  Fix: prepend the Linux npm global bin to PATH so the Linux pi wins:"
-          echo "    echo 'export PATH=\"\$(npm config get prefix)/bin:\$PATH\"' >> ~/.bashrc"
-          echo "    source ~/.bashrc"
-          echo "    which pi   # should now print a Linux path (e.g. ~/.nvm/.../bin/pi)"
-          echo
+          warn "WSL: Windows pi at $pi_path is shadowing the Linux install"
+          info "fix: prepend Linux npm bin to PATH —"
+          info "  echo 'export PATH=\"\$(npm config get prefix)/bin:\$PATH\"' >> ~/.bashrc"
+          info "  source ~/.bashrc && which pi"
           ;;
       esac
     fi
+  else
+    ok "no PATH issues detected"
   fi
 
-  blue "==> next steps"
-  echo "  1. (optional) install soft companions for power-ups:"
-  echo "       npm i -g pi-super-curl    # HTTP/auth surface"
-  echo "       npm i -g surf-cli         # browser automation"
-  echo "  2. boot pi:           pi"
-  echo "  3. start engagement:  /vibehack <authorized-target>"
-  echo "  4. watch the tree:    /vibehack-tree"
-  echo
-  yellow "⚠ AUTHORIZED TESTING ONLY. The operator is responsible for authorization."
-  echo "  Do not use against systems you do not own or have explicit, written permission to test."
+  printf "\n"
+  cyan "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  bold "  next steps"
+  cyan "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  printf "    %s1.%s boot pi:                     %spi%s\n"                "$C_GREEN" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf "    %s2.%s start engagement:           %s/vibehack <target>%s\n" "$C_GREEN" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf "    %s3.%s watch the tree:             %s/vibehack-tree%s\n"    "$C_GREEN" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf "\n    %soptional power-ups:%s\n" "$C_DIM" "$C_RESET"
+  printf "      %snpm i -g pi-super-curl%s   %s# HTTP/auth surface%s\n"   "$C_BOLD" "$C_RESET" "$C_DIM" "$C_RESET"
+  printf "      %snpm i -g surf-cli%s        %s# browser automation%s\n"  "$C_BOLD" "$C_RESET" "$C_DIM" "$C_RESET"
+  printf "\n"
+  yellow "  ⚠ AUTHORIZED TESTING ONLY"
+  info "    The operator is responsible for authorization."
+  info "    Do not use against systems you do not own or have explicit written permission to test."
+  printf "\n"
 }
 
 main "$@"

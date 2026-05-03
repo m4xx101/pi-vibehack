@@ -1,6 +1,6 @@
 {
   "name": "@m4xx101/vibeshack",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Context-aware vibe-hacking harness on pi-mono. Hypothesis-tree REPL, graphify-backed recall, on-the-fly tool synthesis. Authorized testing only.",
   "keywords": [
     "pi-mono",
@@ -65,20 +65,24 @@
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
-    "@zenobius/pi-dcp": "^0.1.0",
     "pi-prompt-template-model": "^0.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@zenobius/pi-dcp": {
+      "optional": true
+    }
   },
   "optionalDependencies": {
     "pi-super-curl": "*",
     "surf-cli": "*"
   },
   "devDependencies": {
-    "@sinclair/typebox": "^0.32.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },
   "dependencies": {
+    "@sinclair/typebox": "^0.32.0",
     "yaml": "^2.8.4"
   }
 }
