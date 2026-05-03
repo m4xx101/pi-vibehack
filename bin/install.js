@@ -112,7 +112,21 @@ async function cmdInstall(args) {
 
   await addPackage(settingsPath, `npm:${PKG.name}@${PKG.version}`);
   await addPackage(settingsPath, "npm:pi-prompt-template-model@^0.9.0");
-  await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
+
+  // @zenobius/pi-dcp is OPT-IN. Its transitive @stacksjs/clarity has a broken
+  // postinstall (`bunx git-hooks` ENOENT) that crashes pi-mono when it lazy-installs.
+  // Default: skip. Operators who want DCP pass --with-dcp; we preflight-install
+  // it globally with --ignore-scripts so pi-mono's later spawn finds it cached.
+  if (args["with-dcp"]) {
+    console.log(`→ preflight-installing @zenobius/pi-dcp@^0.1.0 with --ignore-scripts...`);
+    const code = await npmInstallWithRetry(["install", "-g", "@zenobius/pi-dcp@^0.1.0", "--ignore-scripts"]);
+    if (code !== 0) {
+      console.error(`✗ pi-dcp preflight install failed (exit ${code}). Continuing without DCP.`);
+    } else {
+      await addPackage(settingsPath, "npm:@zenobius/pi-dcp@^0.1.0");
+      console.log(`✓ pi-dcp registered (opt-in via --with-dcp)`);
+    }
+  }
 
   const dataDir = vibehackDir(args["data-dir"]);
   await ensureDataDir(dataDir);

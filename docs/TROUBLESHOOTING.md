@@ -334,11 +334,21 @@ npx -y @m4xx101/vibeshack install
 
 Engagement data at `~/.pi/agent/vibehack/engagements/` is preserved across uninstall.
 
-## pi-mono install fails with `bunx git-hooks` error
+## `bunx git-hooks` postinstall failure (pi-dcp)
 
-The `@zenobius/pi-dcp` peer-dep has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). The pi-vibehack `install.sh` detects this and auto-retries with `--ignore-scripts` (safe — the only skipped scripts are dev-time git-hooks setup, not runtime code).
+`@zenobius/pi-dcp` (Dynamic Context Pruning) has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). This crashed pi at boot in earlier rcs because pi-mono lazy-installs settings.json packages.
 
-If installing pi-mono manually:
+**v1.1.0-rc.3+ does NOT ship pi-dcp by default.** Your install succeeds without it. v1.1's headline features (reflection, evolve, Kali, browser-verifier, canaries) do not depend on DCP.
+
+To opt into DCP, pass `--with-dcp`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/v1.1-dev/install.sh | bash -s -- --with-dcp
+```
+
+The installer preflight-installs pi-dcp with `--ignore-scripts` BEFORE adding it to pi's settings.json, so pi's lazy install at boot finds it cached and doesn't re-trigger the broken postinstall.
+
+If you hit the same error installing pi-mono manually:
 
 ```bash
 npm install -g @mariozechner/pi-coding-agent --ignore-scripts
