@@ -73,6 +73,7 @@ async function buildBoundsAdvisory(eng: string): Promise<string> {
 
 export function registerBeforeAgentStartHook(pi: any) {
   pi.on("before_agent_start", async (event: any, ctx: any) => {
+    try {
     startTurn(`turn-${Date.now()}`);
 
     pi.setActiveTools?.(["read", "grep", ...PLANNER_TOOL_NAMES]);
@@ -134,5 +135,9 @@ export function registerBeforeAgentStartHook(pi: any) {
 
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
     return { systemPrompt: newSystem };
+    } catch (e) {
+      try { ctx?.ui?.notify?.(`[pi-vibehack] before_agent_start failed: ${(e as Error).message}`, "warn"); } catch {}
+      return {};
+    }
   });
 }

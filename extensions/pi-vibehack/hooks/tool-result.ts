@@ -90,6 +90,7 @@ export function validateVerifierResult(
 
 export function registerToolResultHook(pi: any) {
   pi.on("tool_result", async (event: any, _ctx: any) => {
+    try {
     const eng = await activeEngagementId();
     if (!eng) return;
     const dir = engagementDir(eng);
@@ -237,6 +238,10 @@ export function registerToolResultHook(pi: any) {
         if (body) await setPendingHandoff(eng, body);
       }
     } catch {}
+    } catch (e) {
+      try { _ctx?.ui?.notify?.(`[pi-vibehack] tool_result hook failed: ${(e as Error).message}`, "warn"); } catch {}
+      return;
+    }
   });
 }
 
