@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.7 — 2026-05-03
+
+Production-hardening pass — no new features. Fixes from the v1.1.6 production audit (5 Important + 4 Minor).
+
+### Fixed
+- **`before-agent-start` and `tool-result` hooks now isolated with outer try/catch.** A runtime crash inside either hook used to break every subsequent Planner turn. Both now log via `ctx.ui.notify` and return a safe no-op shape on failure (defense-in-depth around the existing per-section try/catches).
+- **`additionalProperties: false` on all 9 Planner tool schemas** (`expand`, `confirm`, `evidence`, `dead-end`, `prune`, `propose-chain` + inner step shape, `propose-specialist`, `recall`, `canary-verify`). Extras supplied by the LLM now fail validation loudly instead of being silently accepted.
+- **`vibehack-chain-confirm` guards for active engagement before file I/O.** Aligns with the guard pattern used by `/steer` and other handlers.
+- **`vibehack-handoff` no longer double-executes.** The prompt was running on the LLM (`restore: true`) at the same time the registered command handler did the actual file write — second pass overwrote the first. Prompt is now `restore: false` with a pointer to the handler.
+
+### Refactor
+- Hoisted `asString` defensive coercer to `extensions/pi-vibehack/lib/coerce.ts` for shared use (was a private helper inside `persona.ts`).
+- Defensive `asString` coercion in `reflection.ts` (`leaf.surface`, `slugify` input) for JSONL-loaded data that may not be a string.
+- Defensive `String()` coercion before `.trim()` on `vibehack_expand` `falsifier` param.
+- `recall.ts` `execute` signature aligned with the project convention (5 args, last 3 underscore-prefixed when unused). Cosmetic.
+
 ## v1.1.6 — 2026-05-03
 
 ### Fixed
