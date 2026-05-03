@@ -22,7 +22,7 @@ export const expandTool = {
   parameters: expandSchema,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) {
-    if (params.kind !== "root" && (!params.falsifier || params.falsifier.trim().length === 0)) {
+    if (params.kind !== "root" && (!params.falsifier || String(params.falsifier ?? "").trim().length === 0)) {
       throw new Error("falsifier is required for non-root nodes");
     }
     let eng = await activeEngagementId();
