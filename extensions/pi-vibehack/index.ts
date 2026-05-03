@@ -114,6 +114,9 @@ export default function vibehack(pi: any) {
   pi.registerCommand?.("vibehack-chain-confirm", {
     description: "Run the most recent proposed exploit chain",
     handler: async (args: string, ctx: any) => {
+      const { activeEngagementId } = await import("./lib/engagement.ts");
+      const eng = await activeEngagementId();
+      if (!eng) { ctx.ui.notify("no active engagement", "warn"); return; }
       const { runChain } = await import("./lib/chain-runner.ts");
       const interactive = /--interactive/.test(args);
       const { promises: fs } = await import("node:fs");
