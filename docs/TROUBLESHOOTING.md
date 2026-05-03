@@ -338,12 +338,12 @@ Engagement data at `~/.pi/agent/vibehack/engagements/` is preserved across unins
 
 `@zenobius/pi-dcp` (Dynamic Context Pruning) has a transitive `@stacksjs/clarity` whose postinstall calls `bunx git-hooks` (a non-existent package). This crashed pi at boot in earlier rcs because pi-mono lazy-installs settings.json packages.
 
-**v1.1.0-rc.3+ does NOT ship pi-dcp by default.** Your install succeeds without it. v1.1's headline features (reflection, evolve, Kali, browser-verifier, canaries) do not depend on DCP.
+**v1.1.0+ does NOT ship pi-dcp by default.** Your install succeeds without it. v1.1's headline features (reflection, evolve, Kali, browser-verifier, canaries) do not depend on DCP.
 
 To opt into DCP, pass `--with-dcp`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/v1.1-dev/install.sh | bash -s -- --with-dcp
+curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash -s -- --with-dcp
 ```
 
 The installer preflight-installs pi-dcp with `--ignore-scripts` BEFORE adding it to pi's settings.json, so pi's lazy install at boot finds it cached and doesn't re-trigger the broken postinstall.

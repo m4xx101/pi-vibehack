@@ -1,6 +1,15 @@
 # Changelog
 
-## v1.1.0-rc1 — 2026-05-02
+## v1.1.0 — 2026-05-03
+
+### Install UX
+- Drop `@zenobius/pi-dcp` from default install — its transitive `@stacksjs/clarity` postinstall (`bunx git-hooks` ENOENT) crashed pi at boot. Opt-in via `--with-dcp`; the installer preflight-installs DCP with `--ignore-scripts` before adding it to settings.
+- `install.sh` now ships a polished UX: ASCII π banner, 5-step indicator, colored status lines, WSL PATH-shadowing detection, detect-and-retry on transitive postinstall failures.
+- `bin/install.js` accepts `--with-dcp` flag, executable bit set on all `bin/*.js`.
+- `@sinclair/typebox` moved from devDependencies → dependencies (extension runtime needs `FormatRegistry`).
+- `npm install -g @m4xx101/vibeshack` (no tag) now Just Works — single `latest` dist-tag.
+
+## v1.1.0-rc1 — 2026-05-02 *(superseded by v1.1.0)*
 
 ### Added
 

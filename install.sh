@@ -2,7 +2,7 @@
 # pi-vibehack curl-pipe installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/v1.1-dev/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
 #
 # With flags:
 #   curl -fsSL .../install.sh | bash -s -- --profile local
@@ -16,7 +16,7 @@ set -euo pipefail
 NPM_PKG="@m4xx101/vibeshack"
 PI_PKG="@mariozechner/pi-coding-agent"
 REPO="https://github.com/m4xx101/pi-vibehack"
-NPM_TAG="${VIBEHACK_NPM_TAG:-rc}"
+NPM_TAG="${VIBEHACK_NPM_TAG:-latest}"
 
 # ── colors ─────────────────────────────────────────────────────────────────
 if [ -t 1 ] && [ "${TERM:-}" != "dumb" ] && [ -z "${NO_COLOR:-}" ]; then

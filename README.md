@@ -75,29 +75,25 @@ The whole loop is invariant-driven. Hooks enforce: hypothesis-or-die, falsifier-
 
 ## Install
 
-Three install paths — pick whichever matches your environment.
-
-### One-liner (npx)
-
-```bash
-# Install pi-mono first if you haven't:
-npm i -g @mariozechner/pi-coding-agent
-
-# Then install pi-vibehack:
-npx -y @m4xx101/vibeshack install
-```
-
-The npm package name is `@m4xx101/vibeshack` (npm word-filter quirk); the harness, repo, slash commands, and brand are all `pi-vibehack`.
-
-### Curl-pipe one-liner
+### Recommended: curl-pipe one-liner
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/m4xx101/pi-vibehack/main/install.sh | bash
 ```
 
-Installs pi-mono if missing, then runs `npx -y @m4xx101/vibeshack install`. Inspect the script before piping if your security posture requires it.
+Sleek banner, 5-step indicator, installs pi-mono if missing, handles transitive postinstall failures automatically, detects WSL PATH-shadowing. Inspect the script before piping if your security posture requires it (`curl -fsSL .../install.sh | less`).
 
-### Manual (clone-and-run, for offline installs and contributors)
+### Alternative: direct npm
+
+```bash
+npm i -g @mariozechner/pi-coding-agent
+npm i -g @m4xx101/vibeshack
+pi-vibehack install
+```
+
+The npm package name is `@m4xx101/vibeshack` (word-filter quirk); the harness, repo, slash commands, and brand are all `pi-vibehack`.
+
+### Manual (clone-and-run — offline installs and contributors)
 
 ```bash
 git clone https://github.com/m4xx101/pi-vibehack
@@ -106,9 +102,20 @@ npm install --legacy-peer-deps
 node bin/install.js install
 ```
 
-Works without npm registry access if you mirror the repo internally. The peer-dep flag skips `pi-prompt-template-model` / `@zenobius/pi-dcp` advisory transitives — install separately if needed.
+Works without npm registry access if you mirror the repo internally.
 
-> 💡 If install fails (especially with `bunx git-hooks` error) or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+### Optional flags
+
+```bash
+# Pick a model profile (hybrid is default):
+curl -fsSL .../install.sh | bash -s -- --profile local
+curl -fsSL .../install.sh | bash -s -- --planner gpt-5 --operator claude-opus-4-7
+
+# Opt into Dynamic Context Pruning (preflight-installs pi-dcp with --ignore-scripts):
+curl -fsSL .../install.sh | bash -s -- --with-dcp
+```
+
+> 💡 If install fails or you're on WSL with PATH issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 See [`docs/INSTALL.md`](docs/INSTALL.md) for profile flags, custom local providers, project-scoped installs, and troubleshooting.
 
@@ -152,7 +159,7 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for a full first-run walkthrough wi
 - **Soft-dep auto-install with consent** — `session_start` detects missing soft companions (pi-super-curl, surf-cli, graphify) and offers a single batched install prompt; `auto_install.enabled: false` opts out and restores the legacy banner.
 - **Live cost telemetry** in the status banner — `⚡ $X (last turn)` surfaces runaway Operator subprocesses immediately and turns red above `cost_warn_threshold_usd`.
 
-### New in v1.1.0-rc1
+### New in v1.1.0
 
 - **Self-evolving harness** — Layer B reflection (`extensions/pi-vibehack/lib/reflection.ts`) clusters confirmed leaves by stack signature on `session_before_compact` / `/vibehack-complete` / manual `/vibehack-reflect`, writing refined recipes to `~/.pi/agent/vibehack/skills/learned/<slug>/SKILL.md`. Operator-edited recipes are detected and never clobbered. Layer A: `/vibehack-evolve --bench <name>` runs `bench/<name>/up.sh` → engagement → evaluator → `down.sh`; `--mutate` spawns the `vibehack-mutator` subagent in a git worktree and only lands the mutation if the target bench passes AND the regression suite stays green.
 - **Kali tool auto-discovery** — `KALI_TOOLS` catalog of 76 tools across 8 categories (recon/exploit/crack/forensic/network/web_api/mobile/misc). `detectKaliCapabilities()` runs at `session_start` and caches to `~/.pi/agent/vibehack/.capabilities.json`. Manual refresh via `/vibehack-rescan-kali`. Kali-MCP companion (`mcp-kali-server` / `zebbern-kali-mcp`) detected and banner-announced.
@@ -227,7 +234,7 @@ SOTA references that informed the design (verify before publishing): Project Nap
 
 ## Status
 
-This is **v1.1.0-rc1** — release candidate. Predecessor tag: `v1.0.1-rc1` (commit `07e8856`). Tests: 262/262 across 38 vitest files. Not yet published to npm under that exact tag (the `package.json` declares `1.0.0`; we will cut `v1.0.0` once external smoke testing closes). Known nits:
+This is **v1.1.0** — published on npm as `@m4xx101/vibeshack@latest`. Tests: 263/263 across 38 vitest files. Predecessor: `v1.0.1-rc1` (commit `07e8856`). Known nits:
 
 - Pre-existing `TS7016` warnings (untyped third-party JS imports) — non-blocking, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 - A `DEP0190` shell:true warning on Windows from one spawn site — non-blocking; tracked.
