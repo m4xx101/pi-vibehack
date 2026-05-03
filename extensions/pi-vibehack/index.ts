@@ -41,6 +41,43 @@ export default function vibehack(pi: any) {
   (globalThis as any).__vibehack_dcp_rules = ALL_DCP_RULES;
 
   // Custom commands
+
+  // /vibehack <target> — bootstrap engagement BEFORE the prompt body renders.
+  // The .md prompt has `restore: true` so the LLM still gets the planner instructions;
+  // this handler ensures the engagement exists by the time the LLM calls vibehack_expand.
+  // Without this, the LLM saw "no active engagement" in the session banner and refused
+  // to call the tool at all.
+  pi.registerCommand?.("vibehack", {
+    description: "Start a new vibehack engagement against the given target",
+    handler: async (args: string, ctx: any) => {
+      const target = String(args ?? "").trim();
+      if (!target) { ctx.ui.notify("usage: /vibehack <target>", "warn"); return; }
+      const { activeEngagementId, setActiveEngagement, engagementDir, newEngagementId, slugify } =
+        await import("./lib/engagement.ts");
+      const { appendEvent, nowIso } = await import("./lib/events.ts");
+      const { promises: fs } = await import("node:fs");
+
+      const existing = await activeEngagementId();
+      // If an engagement is already active for the same target, reuse it.
+      if (existing && existing.endsWith(`-${slugify(target)}`)) {
+        ctx.ui.notify(`engagement already active: ${existing}`, "info");
+        return;
+      }
+
+      const engId = newEngagementId(target);
+      const dir = engagementDir(engId);
+      await fs.mkdir(dir, { recursive: true });
+      await setActiveEngagement(engId);
+      await appendEvent(dir, {
+        ts: nowIso(),
+        engagement_id: engId,
+        event: "engagement_start",
+        metadata: { target },
+      } as any);
+      ctx.ui.notify(`engagement started: ${engId} (target: ${target})`, "info");
+    },
+  });
+
   pi.registerCommand?.("vibehack-cost", {
     description: "Show cost readout for the active engagement",
     handler: async (_args: string, ctx: any) => {

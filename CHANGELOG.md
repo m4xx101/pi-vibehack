@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.8 — 2026-05-03
+
+### Fixed
+- **`/vibehack <target>` actually starts the engagement now (real fix).** v1.1.6's auto-bootstrap-in-tool was a workaround: the LLM read "no active engagement" from the session banner and refused to call `vibehack_expand` at all, so the bootstrap path never fired. Real fix: registered a `pi.registerCommand?.("vibehack", ...)` handler that creates the engagement directory, writes the `.active` marker, and emits `engagement_start` BEFORE the LLM prompt body renders. The LLM now sees an active engagement when it's instructed to call `vibehack_expand(kind:"root", ...)`. Idempotent: re-running `/vibehack <same-target>` reuses the existing engagement.
+
 ## v1.1.7 — 2026-05-03
 
 Production-hardening pass — no new features. Fixes from the v1.1.6 production audit (5 Important + 4 Minor).
