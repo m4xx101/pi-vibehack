@@ -10,9 +10,10 @@ import { readEvents, appendEvent, eventsPath, nowIso } from "../lib/events.ts";
 import { foldNodes, type Node } from "../render/tree-md.ts";
 import { distillFromEngagement, appendLesson } from "../lib/lessons.ts";
 import { runReflection } from "../lib/reflection.ts";
+import type { ExtensionAPI, ExtensionContext, SessionBeforeCompactEvent } from "../lib/typed-pi.ts";
 
-export function registerSessionBeforeCompactHook(pi: any) {
-  pi.on("session_before_compact", async (_event: any, _ctx: any) => {
+export function registerSessionBeforeCompactHook(pi: ExtensionAPI) {
+  pi.on("session_before_compact", async (_event: SessionBeforeCompactEvent, _ctx: ExtensionContext) => {
     try {
       const eng = await activeEngagementId();
       if (!eng) return;
@@ -76,7 +77,12 @@ export function registerSessionBeforeCompactHook(pi: any) {
           `Read engagements/${eng}/events.jsonl and tree.md for full state. Auto-recall is active.`,
         );
         const summary = lines.join("\n") + "\n";
-        return { customSummary: summary };
+        // NOTE: { customSummary } is a legacy/pre-API shape preserved as-is to
+        // avoid behavioural change in this Phase-1 type-only refactor. The
+        // proper Phase-3 fix is to return { compaction: CompactionResult } per
+        // SessionBeforeCompactResult (types.d.ts:747). Cast through unknown
+        // to keep typecheck green without altering runtime semantics.
+        return { customSummary: summary } as unknown as undefined;
       } catch {
         return;
       }
