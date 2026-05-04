@@ -4,6 +4,7 @@ import { registerToolCallHook } from "./hooks/tool-call.ts";
 import { registerToolResultHook } from "./hooks/tool-result.ts";
 import { registerBeforeProviderRequestHook } from "./hooks/before-provider-request.ts";
 import { registerSessionBeforeCompactHook } from "./hooks/session-before-compact.ts";
+import { registerResourcesDiscoverHook } from "./hooks/resources-discover.ts";
 import { registerStatusBanner } from "./ui/status-banner.ts";
 import { registerTreeViewer } from "./ui/tree-viewer.ts";
 import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
@@ -31,6 +32,7 @@ export default function vibehack(pi: any) {
   registerToolResultHook(pi);
   registerBeforeProviderRequestHook(pi);
   registerSessionBeforeCompactHook(pi);
+  registerResourcesDiscoverHook(pi);
 
   // UI
   registerStatusBanner(pi);
