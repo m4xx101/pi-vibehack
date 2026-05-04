@@ -76,6 +76,9 @@ export default function vibehack(pi: any) {
         event: "engagement_start",
         metadata: { target },
       } as any);
+      // v1.2 Phase 7: name the pi session so /resume shows "vibehack: <target>"
+      // instead of cwd-encoded gibberish. Optional API on older pi-mono builds.
+      try { (pi as any).setSessionName?.(`vibehack: ${target}`); } catch {}
       ctx.ui.notify(`engagement started: ${engId} (target: ${target})`, "info");
     },
   });

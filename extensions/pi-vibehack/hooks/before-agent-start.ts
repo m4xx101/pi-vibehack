@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import { activeEngagementId, engagementDir, vibehackRoot } from "../lib/engagement.ts";
 import { detectProvider, loadPersona } from "../lib/persona.ts";
 import { PLANNER_TOOL_NAMES } from "../tools/index.ts";
@@ -9,6 +10,25 @@ import { getMutationGateMessage } from "./tool-result.ts";
 import type { ExtensionAPI, ExtensionContext, BeforeAgentStartEvent, BeforeAgentStartEventResult } from "../lib/typed-pi.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+// v1.2: pi-mono natively walks AGENTS.md/CLAUDE.md from cwd
+// (resource-loader.js:31) and loads SYSTEM.md / APPEND_SYSTEM.md from
+// `~/.pi/agent/` (resource-loader.js:662, 666, 673, 677). Re-reading
+// AGENTS.md ourselves duplicates that work and risks drift. We keep the
+// dual-load behind `vibehack.agentsMdCompat: true` for one minor version
+// per the v1.2 plan's Risk #2 mitigation.
+async function shouldDualLoadAgentsMd(): Promise<boolean> {
+  try {
+    const cfgPath =
+      process.env.VIBEHACK_CONFIG_PATH ||
+      join(homedir(), ".pi", "agent", "vibehack", "config.yaml");
+    const { readConfig } = await import("../lib/config-runtime.ts");
+    const cfg = readConfig(cfgPath);
+    return !!(cfg && cfg.vibehack && cfg.vibehack.agentsMdCompat === true);
+  } catch {
+    return false;
+  }
+}
 
 const BROWSER_CLASS_KINDS = new Set([
   "DOM-XSS",
@@ -91,14 +111,20 @@ export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
     const eng = await activeEngagementId();
     let agentsMd = "";
     let globalAgentsMd = "";
-    if (eng) {
+    // pi-mono natively loads AGENTS.md/CLAUDE.md by walking cwd
+    // (resource-loader.js:31) and SYSTEM.md / APPEND_SYSTEM.md from
+    // ~/.pi/agent (resource-loader.js:662, 666, 673, 677). Re-reading them
+    // here is opt-in via vibehack.agentsMdCompat for one minor version.
+    if (await shouldDualLoadAgentsMd()) {
+      if (eng) {
+        try {
+          agentsMd = await fs.readFile(join(engagementDir(eng), "AGENTS.md"), "utf8");
+        } catch {}
+      }
       try {
-        agentsMd = await fs.readFile(join(engagementDir(eng), "AGENTS.md"), "utf8");
+        globalAgentsMd = await fs.readFile(join(vibehackRoot(), "AGENTS.md"), "utf8");
       } catch {}
     }
-    try {
-      globalAgentsMd = await fs.readFile(join(vibehackRoot(), "AGENTS.md"), "utf8");
-    } catch {}
 
     let handoff = "";
     if (eng) {
