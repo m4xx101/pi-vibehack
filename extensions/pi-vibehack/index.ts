@@ -47,7 +47,7 @@ export default function vibehack(pi: any) {
   // this handler ensures the engagement exists by the time the LLM calls vibehack_expand.
   // Without this, the LLM saw "no active engagement" in the session banner and refused
   // to call the tool at all.
-  pi.registerCommand?.("vibehack", {
+  pi.registerCommand("vibehack", {
     description: "Start a new vibehack engagement against the given target",
     handler: async (args: string, ctx: any) => {
       const target = String(args ?? "").trim();
@@ -78,7 +78,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-cost", {
+  pi.registerCommand("vibehack-cost", {
     description: "Show cost readout for the active engagement",
     handler: async (_args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");
@@ -101,14 +101,14 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-update", {
+  pi.registerCommand("vibehack-update", {
     description: "Bump pinned pi-vibehack version in settings.json",
     handler: async (_args: string, ctx: any) => {
       ctx.ui.notify("run `npx -y @m4xx101/pi-vibehack install` to update; /reload after.", "info");
     },
   });
 
-  pi.registerCommand?.("vibehack-pin", {
+  pi.registerCommand("vibehack-pin", {
     description: "Pin a fact to engagement (or global with --global) AGENTS.md",
     handler: async (args: string, ctx: any) => {
       const { promises: fs } = await import("node:fs");
@@ -125,7 +125,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-handoff", {
+  pi.registerCommand("vibehack-handoff", {
     description: "Generate cross-session/cross-engagement handoff prompt",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");
@@ -148,7 +148,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-chain-confirm", {
+  pi.registerCommand("vibehack-chain-confirm", {
     description: "Run the most recent proposed exploit chain",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId } = await import("./lib/engagement.ts");
@@ -175,7 +175,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("steer", {
+  pi.registerCommand("steer", {
     description: "Inject a free-text steering note into the next Planner turn",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId } = await import("./lib/engagement.ts");
@@ -194,7 +194,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-chain-reject", {
+  pi.registerCommand("vibehack-chain-reject", {
     description: "Reject the most recent proposed chain",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");
