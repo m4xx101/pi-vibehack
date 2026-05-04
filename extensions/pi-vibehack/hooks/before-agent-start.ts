@@ -6,6 +6,7 @@ import { detectProvider, loadPersona } from "../lib/persona.ts";
 import { PLANNER_TOOL_NAMES } from "../tools/index.ts";
 import { startTurn } from "../lib/turn-state.ts";
 import { getMutationGateMessage } from "./tool-result.ts";
+import type { ExtensionAPI, ExtensionContext, BeforeAgentStartEvent, BeforeAgentStartEventResult } from "../lib/typed-pi.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -71,14 +72,17 @@ async function buildBoundsAdvisory(eng: string): Promise<string> {
   } catch { return ""; }
 }
 
-export function registerBeforeAgentStartHook(pi: any) {
-  pi.on("before_agent_start", async (event: any, ctx: any) => {
+export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
+  pi.on("before_agent_start", async (event: BeforeAgentStartEvent, ctx: ExtensionContext): Promise<BeforeAgentStartEventResult | void> => {
     try {
     startTurn(`turn-${Date.now()}`);
 
     pi.setActiveTools?.(["read", "grep", ...PLANNER_TOOL_NAMES]);
 
-    const provider = detectProvider(event?.model ?? ctx?.model);
+    // Neither BeforeAgentStartEvent nor ExtensionContext have a documented
+    // `model` field, but legacy pi versions exposed one — keep the defensive
+    // access via a local cast so we still pick it up if present.
+    const provider = detectProvider((event as any)?.model ?? (ctx as any)?.model);
     const persona = await loadPersona(provider).catch(() => "");
     const plannerSys = await fs
       .readFile(join(HERE, "..", "..", "..", "prompts", "planner-system.md"), "utf8")
@@ -136,7 +140,7 @@ export function registerBeforeAgentStartHook(pi: any) {
     const newSystem = (event.systemPrompt ?? "") + "\n\n" + blocks.join("\n\n");
     return { systemPrompt: newSystem };
     } catch (e) {
-      try { ctx?.ui?.notify?.(`[pi-vibehack] before_agent_start failed: ${(e as Error).message}`, "warn"); } catch {}
+      try { ctx?.ui?.notify?.(`[pi-vibehack] before_agent_start failed: ${(e as Error).message}`, "warning"); } catch {}
       return {};
     }
   });
