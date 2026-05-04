@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { recall } from "../graph/recall.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const recallSchema = Type.Object({
   query: Type.String({ minLength: 1 }),
@@ -11,6 +12,10 @@ export const recallTool = {
   description:
     "Query the cross-engagement knowledge graph (graphify) or fall back to grep over events.jsonl.",
   parameters: recallSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, { q: "query" }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, _ctx?: any) {
     const subs = await recall(params.query);
