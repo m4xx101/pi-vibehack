@@ -17,6 +17,7 @@ import { Type } from "@sinclair/typebox";
 import { plantFileCanary, plantHttpCallbackCanary } from "../lib/canary.ts";
 import * as fs from "fs";
 import * as crypto from "crypto";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const canaryVerifySchema = Type.Object({
   node_id: Type.String(),
@@ -37,6 +38,16 @@ export const canaryVerifyTool = {
     "Plant a canary appropriate for the vuln class and emit canary_planted. " +
     "OOB classes (DNS, blind-OOB) require an operator-pinned collector.",
   parameters: canaryVerifySchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, {
+      id: "node_id",
+      vulnClass: "kind",
+      vulnKind: "kind",
+      vuln_class: "kind",
+      vuln_kind: "kind",
+    }),
+  ) as any,
 
   async execute(
     _callId: string,
