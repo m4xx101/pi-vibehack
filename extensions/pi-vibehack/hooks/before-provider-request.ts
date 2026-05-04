@@ -4,6 +4,7 @@ import { foldNodes } from "../render/tree-md.ts";
 import { recall } from "../graph/recall.ts";
 import { getDetected } from "../lib/detector-cache.ts";
 import type { SkillInfo } from "../lib/extension-detector.ts";
+import type { ExtensionAPI, ExtensionContext, BeforeProviderRequestEvent } from "../lib/typed-pi.ts";
 
 export function pickOpenHypothesisQuery(events: any[]): string | null {
   const nodes = foldNodes(events);
@@ -55,8 +56,8 @@ export function formatRecallBlock(subs: any[], recipeHints?: SkillInfo[]): strin
   return lines.join("\n");
 }
 
-export function registerBeforeProviderRequestHook(pi: any) {
-  pi.on("before_provider_request", async (event: any, _ctx: any) => {
+export function registerBeforeProviderRequestHook(pi: ExtensionAPI) {
+  pi.on("before_provider_request", async (event: BeforeProviderRequestEvent, _ctx: ExtensionContext) => {
     try {
       const eng = await activeEngagementId();
       if (!eng) return;
@@ -68,13 +69,18 @@ export function registerBeforeProviderRequestHook(pi: any) {
       const recipeHints = detected?.skills;
       const block = formatRecallBlock(subs, recipeHints);
       if (!block) return;
-      if (Array.isArray(event?.payload?.messages)) {
-        event.payload.messages = [
+      // event.payload is `unknown` per the typed API — providers serialize
+      // their request payload in their own shape. Narrow with runtime checks
+      // and cast locally to mutate either OpenAI-style messages[] or the
+      // Anthropic-style top-level system string.
+      const payload = event.payload as { messages?: unknown; system?: unknown } | null | undefined;
+      if (Array.isArray(payload?.messages)) {
+        (payload as any).messages = [
           { role: "system", content: block },
-          ...event.payload.messages,
+          ...(payload!.messages as unknown[]),
         ];
-      } else if (typeof event?.payload?.system === "string") {
-        event.payload.system = block + "\n\n" + event.payload.system;
+      } else if (typeof payload?.system === "string") {
+        (payload as any).system = block + "\n\n" + payload.system;
       }
     } catch {
       /* never break the request */
