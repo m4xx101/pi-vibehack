@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const proposeChainSchema = Type.Object({
   root_node_id: Type.String(),
@@ -18,6 +19,17 @@ export const proposeChainTool = {
   label: "Propose exploit chain",
   description: "Propose a sequential chain of post-exploitation steps. Operator confirms before execution.",
   parameters: proposeChainSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(
+      args,
+      { id: "root_node_id" },
+      {
+        nestedArrayKeys: ["steps"],
+        nestedArrayItemAliases: { id: "node_id" },
+      },
+    ),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) {
     const eng = await activeEngagementId();
