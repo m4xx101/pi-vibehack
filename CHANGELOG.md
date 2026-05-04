@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.2.0 — 2026-05-05
+
+Major rewire pass: pi-vibehack now uses pi-mono APIs the way pi-mono actually exposes them, instead of reimplementing them. Every claim was fact-checked against pi-mono source (`@mariozechner/pi-coding-agent` `dist/core/extensions/types.d.ts` + `dist/core/resource-loader.js` + `dist/core/extensions/loader.js`). Plan: `docs/superpowers/specs/2026-05-04-pi-vibehack-v1.2-rewire-plan.md` (internal).
+
+### Phase 1 — `prepareArguments` shims + type-safety
+- Every Planner tool now declares `prepareArguments` (pi-mono `types.d.ts:344`, `tool-definition-wrapper.js:8`). LLM hallucinations like `nodeId`→`node_id`, `parentId`→`parent_id`, `vulnClass`→`kind` are rewritten *before* TypeBox validation rejects them. Defensive: any shim throw falls through to the original args.
+- Replaced `(event: any, ctx: any)` across 6 hooks with the real typed signatures from `@mariozechner/pi-coding-agent` (new `lib/typed-pi.ts` re-exports `ExtensionAPI`, `ToolCallEvent`, `BeforeAgentStartEvent`, etc.).
+- Surfaced and fixed several latent bugs that were hidden by `: any`: `ctx.ui.notify(..., "warn")` is invalid (`"warning"` is the right level); `session_before_compact` should return `{compaction}` not `{customSummary}`.
+
+### Phase 2 — Native AGENTS.md / SYSTEM.md adoption
+- pi-mono natively walks cwd for `AGENTS.md`/`CLAUDE.md` (`resource-loader.js:31`) and loads `~/.pi/agent/SYSTEM.md` + `APPEND_SYSTEM.md` (`resource-loader.js:662, 666, 673, 677`). The before-agent-start hook used to re-read those files and stuff them into the system prompt — pure duplication.
+- Now skipped by default. Set `vibehack.agentsMdCompat: true` in `~/.pi/agent/vibehack/config.yaml` to keep the dual-load behaviour for one minor version (Risk #2 mitigation).
+- New `hooks/resources-discover.ts` returns `{skillPaths, promptPaths}` for the `resources_discover` event so vibehack skills/prompts surface via the documented channel instead of DCP/global-md tricks.
+
+### Phase 3 — `pi.appendEntry` mirroring + message renderers
+- Every `appendEvent` now also calls `pi.appendEntry("vibehack/<event>", payload)` (pi-mono `types.d.ts:845`, runner.js binding) so vibehack moves land in pi's session JSONL — visible to `/resume`, the tree viewer, and any extension hooking `tool_result`. The engagement-scoped `events.jsonl` remains canonical; the pi side is a best-effort mirror that swallows pi-side errors.
+- Registered `pi.registerMessageRenderer("vibehack/<kind>", ...)` for every event family so the TUI shows distinctive lines for expand/prune/confirm/etc.
+
+### Phase 4 — `ctx.ui.confirm` gates on destructive tools
+- `vibehack_canary_verify` now gates the canary plant behind `ctx.ui.confirm` when `ctx.hasUI` is true. Print/RPC mode (`hasUI=false`) bypasses the prompt to preserve scripted behaviour. 60s timeout per Risk #4; timeout treated as decline. Returns `{ error: "user-blocked" }` so the planner can fall back.
+
+### Phase 5 — Treat `ExtensionAPI` as the contract it is
+- Dropped every `pi.registerCommand?.(...)` (`?.` removed from `register*` calls — these are first-class APIs, not optional).
+- Replaced the `(globalThis as any).__vibehack_dcp_rules = ...` cross-extension channel with `pi.events.emit("vibehack/dcp-rules", ALL_DCP_RULES)`. Named export `vibehackDcpRules` retained for backward compat.
+
+### Phase 6 — CDP browser verifier (no Patchright dep)
+- New `vibehack_browser_verify` tool attaches to an operator-run Chrome at `--remote-debugging-port=9222` (configurable host/port). Navigates to a URL, optionally evaluates a JS expression, returns the result + base64 PNG screenshot.
+- Zero new deps: a tiny CDP client (~200 LoC over `node:net` + `node:http` with RFC 6455 framing) lives in `lib/cdp-client.ts`.
+- Friendly error when no Chrome is attached: `{ error: "no-chrome-attached", hint: "start Chrome with --remote-debugging-port=…" }` — never throws.
+
+### Phase 7 — Session legibility
+- `pi.setSessionName("vibehack: <target>")` after engagement bootstrap so `/resume` shows the engagement target instead of a cwd-encoded path.
+
+### Tests
+- 264 → 305 tests (+41 across 9 prepareArguments suites + AGENTS.md compat + dcp-events + appendEntry mirror + canary confirm gate + browser-verify graceful failure + engagement naming).
+- All passing on Windows + WSL.
+
+### Migration notes
+- If you maintain a fork that depended on `globalThis.__vibehack_dcp_rules`, switch to `pi.events.on("vibehack/dcp-rules", handler)` or read the named export.
+- If you relied on `before-agent-start` reading per-engagement `AGENTS.md`, either drop your AGENTS.md into the engagement cwd (pi-mono picks it up natively) or set `vibehack.agentsMdCompat: true` for one minor version.
+- The new `vibehack_browser_verify` tool is opt-in: it's listed in `PLANNER_TOOL_NAMES` but only fires when the planner asks for it. With no Chrome attached, it returns a friendly error.
+
 ## v1.1.8 — 2026-05-03
 
 ### Fixed

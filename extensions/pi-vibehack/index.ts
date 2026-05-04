@@ -4,12 +4,14 @@ import { registerToolCallHook } from "./hooks/tool-call.ts";
 import { registerToolResultHook } from "./hooks/tool-result.ts";
 import { registerBeforeProviderRequestHook } from "./hooks/before-provider-request.ts";
 import { registerSessionBeforeCompactHook } from "./hooks/session-before-compact.ts";
+import { registerResourcesDiscoverHook } from "./hooks/resources-discover.ts";
 import { registerStatusBanner } from "./ui/status-banner.ts";
 import { registerTreeViewer } from "./ui/tree-viewer.ts";
 import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
 import {
   expandTool, pruneTool, confirmTool, evidenceTool, deadEndTool,
   proposeChainTool, proposeSpecialistTool, recallTool, canaryVerifyTool,
+  browserVerifyTool,
 } from "./tools/index.ts";
 
 export default function vibehack(pi: any) {
@@ -23,6 +25,7 @@ export default function vibehack(pi: any) {
   pi.registerTool(proposeSpecialistTool);
   pi.registerTool(recallTool);
   pi.registerTool(canaryVerifyTool);
+  pi.registerTool(browserVerifyTool);
 
   // Hooks
   registerSessionStartHook(pi);
@@ -31,14 +34,44 @@ export default function vibehack(pi: any) {
   registerToolResultHook(pi);
   registerBeforeProviderRequestHook(pi);
   registerSessionBeforeCompactHook(pi);
+  registerResourcesDiscoverHook(pi);
 
   // UI
   registerStatusBanner(pi);
   registerTreeViewer(pi);
 
-  // DCP rules — picked up by pi-dcp via the vibehackDcpRules export below.
-  // pi-dcp documents its own registration shape; we expose the rules and let it pull.
-  (globalThis as any).__vibehack_dcp_rules = ALL_DCP_RULES;
+  // DCP rules — published via pi.events so pi-dcp can subscribe.
+  // The vibehackDcpRules named export below is preserved for backward compat.
+  pi.events.emit("vibehack/dcp-rules", ALL_DCP_RULES);
+
+  // v1.2 Phase 3: thread pi.appendEntry into the events module so every
+  // vibehack event ALSO lands in the pi session JSONL (types.d.ts:845).
+  // events.jsonl remains the canonical engagement store; this is a mirror so
+  // /resume / TUI message renderers see vibehack moves.
+  if (typeof pi.appendEntry === "function") {
+    import("./lib/events.ts").then(({ setPiAppendEntry }) => {
+      setPiAppendEntry((customType: string, data?: unknown) => {
+        try { pi.appendEntry(customType, data); } catch {}
+      });
+    }).catch(() => {});
+  }
+
+  // Register a single renderer for every vibehack/* customType so pi's TUI
+  // shows distinctive lines for expand/prune/confirm/etc.
+  const VIBEHACK_EVENT_TYPES = [
+    "expand", "prune", "confirm", "evidence", "dead_end", "propose_chain",
+    "propose_specialist", "recall", "canary_planted", "engagement_start",
+    "steer", "chain_reject", "verification_pass",
+  ];
+  for (const t of VIBEHACK_EVENT_TYPES) {
+    try {
+      (pi as any).registerMessageRenderer?.(`vibehack/${t}`, (entry: any) => {
+        const d = entry?.data ?? entry;
+        const node = d?.node_id ? ` ${d.node_id}` : "";
+        return `[vibehack:${t}]${node}`;
+      });
+    } catch {}
+  }
 
   // Custom commands
 
@@ -47,7 +80,7 @@ export default function vibehack(pi: any) {
   // this handler ensures the engagement exists by the time the LLM calls vibehack_expand.
   // Without this, the LLM saw "no active engagement" in the session banner and refused
   // to call the tool at all.
-  pi.registerCommand?.("vibehack", {
+  pi.registerCommand("vibehack", {
     description: "Start a new vibehack engagement against the given target",
     handler: async (args: string, ctx: any) => {
       const target = String(args ?? "").trim();
@@ -74,11 +107,14 @@ export default function vibehack(pi: any) {
         event: "engagement_start",
         metadata: { target },
       } as any);
+      // v1.2 Phase 7: name the pi session so /resume shows "vibehack: <target>"
+      // instead of cwd-encoded gibberish. Optional API on older pi-mono builds.
+      try { (pi as any).setSessionName?.(`vibehack: ${target}`); } catch {}
       ctx.ui.notify(`engagement started: ${engId} (target: ${target})`, "info");
     },
   });
 
-  pi.registerCommand?.("vibehack-cost", {
+  pi.registerCommand("vibehack-cost", {
     description: "Show cost readout for the active engagement",
     handler: async (_args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");
@@ -101,14 +137,14 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-update", {
+  pi.registerCommand("vibehack-update", {
     description: "Bump pinned pi-vibehack version in settings.json",
     handler: async (_args: string, ctx: any) => {
       ctx.ui.notify("run `npx -y @m4xx101/pi-vibehack install` to update; /reload after.", "info");
     },
   });
 
-  pi.registerCommand?.("vibehack-pin", {
+  pi.registerCommand("vibehack-pin", {
     description: "Pin a fact to engagement (or global with --global) AGENTS.md",
     handler: async (args: string, ctx: any) => {
       const { promises: fs } = await import("node:fs");
@@ -125,7 +161,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-handoff", {
+  pi.registerCommand("vibehack-handoff", {
     description: "Generate cross-session/cross-engagement handoff prompt",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");
@@ -148,7 +184,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-chain-confirm", {
+  pi.registerCommand("vibehack-chain-confirm", {
     description: "Run the most recent proposed exploit chain",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId } = await import("./lib/engagement.ts");
@@ -175,7 +211,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("steer", {
+  pi.registerCommand("steer", {
     description: "Inject a free-text steering note into the next Planner turn",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId } = await import("./lib/engagement.ts");
@@ -194,7 +230,7 @@ export default function vibehack(pi: any) {
     },
   });
 
-  pi.registerCommand?.("vibehack-chain-reject", {
+  pi.registerCommand("vibehack-chain-reject", {
     description: "Reject the most recent proposed chain",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId, engagementDir } = await import("./lib/engagement.ts");

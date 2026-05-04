@@ -17,6 +17,7 @@ import { Type } from "@sinclair/typebox";
 import { plantFileCanary, plantHttpCallbackCanary } from "../lib/canary.ts";
 import * as fs from "fs";
 import * as crypto from "crypto";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const canaryVerifySchema = Type.Object({
   node_id: Type.String(),
@@ -38,6 +39,16 @@ export const canaryVerifyTool = {
     "OOB classes (DNS, blind-OOB) require an operator-pinned collector.",
   parameters: canaryVerifySchema,
 
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, {
+      id: "node_id",
+      vulnClass: "kind",
+      vulnKind: "kind",
+      vuln_class: "kind",
+      vuln_kind: "kind",
+    }),
+  ) as any,
+
   async execute(
     _callId: string,
     params: { node_id: string; kind: string },
@@ -48,10 +59,29 @@ export const canaryVerifyTool = {
       eventsPath: string;
       engagement_id: string;
       pinnedCollector?: string | null;
+      hasUI?: boolean;
+      ui?: { confirm?: (title: string, message: string, opts?: any) => Promise<boolean> };
     },
   ): Promise<any> {
     if (!ctx) throw new Error("vibehack_canary_verify requires ctx");
     const ts = new Date().toISOString();
+
+    // v1.2 Phase 4: gate the destructive plant behind ctx.ui.confirm when a UI
+    // is attached. Print/RPC mode (hasUI=false or no ui) skips the prompt to
+    // preserve current scripted behaviour. Timeout treated as "no" per Risk #4.
+    if (ctx.hasUI && typeof ctx.ui?.confirm === "function") {
+      let ok = false;
+      try {
+        ok = !!(await ctx.ui.confirm(
+          `Plant ${params.kind} canary?`,
+          `node ${params.node_id} — this writes to the engagement workspace and may be observable to the target.`,
+          { timeout: 60_000 } as any,
+        ));
+      } catch {
+        ok = false;
+      }
+      if (!ok) return { error: "user-blocked", node_id: params.node_id, kind: params.kind };
+    }
 
     // OOB classes (DNS / blind-OOB) require operator-pinned collector.
     if (params.kind === "DNS" || params.kind === "blind-OOB") {

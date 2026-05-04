@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { recordToolCall } from "../lib/turn-state.ts";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from "../lib/typed-pi.ts";
 
-export function registerToolCallHook(pi: any) {
-  pi.on("tool_call", async (event: any, _ctx: any) => {
+export function registerToolCallHook(pi: ExtensionAPI) {
+  pi.on("tool_call", async (event: ToolCallEvent, _ctx: ExtensionContext) => {
     recordToolCall(event.toolName);
     const eng = await activeEngagementId();
     if (!eng) return;

@@ -160,13 +160,14 @@ describe("HYPOTHESIS_MUTATING_TOOLS / PROPOSAL_TOOLS partitioning", () => {
     for (const m of HYPOTHESIS_MUTATING_TOOLS) expect(PROPOSAL_TOOLS.has(m)).toBe(false);
   });
 
-  it("PLANNER_TOOL_NAMES is the union plus the recall + canary-verify forward-references", () => {
-    // 5 mutating + 2 proposal + vibehack_recall + vibehack_canary_verify = 9.
-    // canary_verify is neither mutating nor a proposal — it plants a marker;
-    // retrieval (verified by tool_result hook) is what advances the tree.
-    expect(PLANNER_TOOL_NAMES.length).toBe(9);
+  it("PLANNER_TOOL_NAMES is the union plus recall + canary-verify + browser-verify", () => {
+    // 5 mutating + 2 proposal + vibehack_recall + vibehack_canary_verify
+    // + vibehack_browser_verify = 10. None of the latter three are
+    // mutating or proposals; their effects are observed via tool_result.
+    expect(PLANNER_TOOL_NAMES.length).toBe(10);
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_recall");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_canary_verify");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_browser_verify");
   });
 });
 

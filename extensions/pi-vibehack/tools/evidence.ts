@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const evidenceSchema = Type.Object({
   node_id: Type.String(),
@@ -14,6 +15,10 @@ export const evidenceTool = {
   label: "Add evidence",
   description: "Attach evidence to a node (read-only mutation; counts toward hypothesis-or-die).",
   parameters: evidenceSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, { id: "node_id", evidenceType: "kind", evidence_type: "kind" }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, _ctx?: any) {
     const eng = await activeEngagementId();

@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const proposeSpecialistSchema = Type.Object({
   node_id: Type.String(),
@@ -13,6 +14,10 @@ export const proposeSpecialistTool = {
   label: "Propose specialist role",
   description: "Declare that an Operator subprocess for this node should spawn with a specialist skill (web-recon, web-exploit, binary-recon, auth-bypass, osint, or operator-grown kind).",
   parameters: proposeSpecialistSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, { id: "node_id" }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, _ctx?: any) {
     const eng = await activeEngagementId();

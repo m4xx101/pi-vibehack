@@ -4,6 +4,11 @@
 // Best-effort — failures per provider are logged and swallowed so one bad entry
 // doesn't break the rest.
 
+// Note: pi parameter is intentionally untyped here. The current single-arg
+// registerProvider({ name, ... }) call shape predates pi-mono's typed
+// registerProvider(name, cfg) signature and is contracted by the test
+// suite. Migrating to the typed shape is out of Phase 1 scope.
+
 export interface ProviderConfig {
   baseUrl: string;
   apiKey: string;

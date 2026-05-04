@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { promises as fs } from "node:fs";
 import { activeEngagementId, engagementDir, newEngagementId, setActiveEngagement } from "../lib/engagement.ts";
 import { appendEvent, nowIso, readEvents, newNodeId } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const expandSchema = Type.Object({
   parent_id: Type.Union([Type.String(), Type.Null()]),
@@ -20,6 +21,17 @@ export const expandTool = {
   label: "Expand hypothesis",
   description: "Add a node to the hypothesis tree. Required falsifier. Returns the new node_id.",
   parameters: expandSchema,
+
+  // Field-aliasing shim: LLMs often emit camelCase (`parentId`, `nextTest`,
+  // `requiresBrowser`) when the schema demands snake_case. Run BEFORE TypeBox
+  // validation. Defensive: any throw falls back to the original args via
+  // safePrepare, letting validation produce its normal error.
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, {
+      // No special renames — generic camelCase→snake_case covers all fields.
+      // `id` → `node_id` is not relevant for expand (no node_id input).
+    }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) {
     if (params.kind !== "root" && (!params.falsifier || String(params.falsifier ?? "").trim().length === 0)) {

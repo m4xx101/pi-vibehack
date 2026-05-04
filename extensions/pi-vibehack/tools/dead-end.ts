@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const deadEndSchema = Type.Object({
   node_id: Type.String(),
@@ -12,6 +13,10 @@ export const deadEndTool = {
   label: "Mark dead end",
   description: "Clean exit from hypothesis-or-die loop when stuck. Marks node status=dead.",
   parameters: deadEndSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, { id: "node_id" }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) {
     const eng = await activeEngagementId();
