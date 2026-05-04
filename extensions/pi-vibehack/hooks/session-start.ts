@@ -10,9 +10,10 @@ import { registerProvidersFromConfig } from "./register-providers.ts";
 import { detectInstalledExtensions } from "../lib/extension-detector.ts";
 import { activateIntegrations } from "../integrations/index.ts";
 import { setDetected } from "../lib/detector-cache.ts";
+import type { ExtensionAPI, ExtensionContext, SessionStartEvent } from "../lib/typed-pi.ts";
 
-export function registerSessionStartHook(pi: any) {
-  pi.on("session_start", async (_event: any, ctx: any) => {
+export function registerSessionStartHook(pi: ExtensionAPI) {
+  pi.on("session_start", async (_event: SessionStartEvent, ctx: ExtensionContext) => {
     // Read vibehack config once; both provider registration and soft-dep prompt use it.
     let cfg: any = null;
     try {
@@ -24,7 +25,7 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack: config load skipped (${e?.message ?? String(e)})`,
-        "warn",
+        "warning",
       );
     }
 
@@ -35,7 +36,7 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack: provider registration skipped (${e?.message ?? String(e)})`,
-        "warn",
+        "warning",
       );
     }
 
@@ -72,7 +73,7 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack: kali detection skipped (${e?.message ?? String(e)})`,
-        "warn",
+        "warning",
       );
     }
 
@@ -92,7 +93,7 @@ export function registerSessionStartHook(pi: any) {
       } catch (e: any) {
         ctx?.ui?.notify?.(
           `pi-vibehack: integration activation partial (${e?.message ?? String(e)})`,
-          "warn",
+          "warning",
         );
       }
       const extCount = Object.keys(detected.extensions).length;
@@ -106,7 +107,7 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack: extension detection skipped (${e?.message ?? String(e)})`,
-        "warn",
+        "warning",
       );
     }
 
@@ -162,7 +163,7 @@ export function registerSessionStartHook(pi: any) {
             }
           }
         } catch (e: any) {
-          ctx?.ui?.notify?.(`pi-vibehack: soft-dep prompt failed: ${e?.message ?? String(e)}`, "warn");
+          ctx?.ui?.notify?.(`pi-vibehack: soft-dep prompt failed: ${e?.message ?? String(e)}`, "warning");
         }
       } else {
         // Legacy advisory banners (auto_install disabled or unset).
@@ -190,7 +191,7 @@ export function registerSessionStartHook(pi: any) {
     } catch (e: any) {
       ctx?.ui?.notify?.(
         `pi-vibehack session_start failed: ${e?.message ?? String(e)}`,
-        "warn",
+        "warning",
       );
     }
   });
