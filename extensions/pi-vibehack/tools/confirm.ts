@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { activeEngagementId, engagementDir } from "../lib/engagement.ts";
 import { appendEvent, nowIso } from "../lib/events.ts";
+import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
 
 export const confirmSchema = Type.Object({
   node_id: Type.String(),
@@ -13,6 +14,10 @@ export const confirmTool = {
   label: "Confirm leaf",
   description: "Mark a leaf confirmed; triggers per-leaf reporter spawn.",
   parameters: confirmSchema,
+
+  prepareArguments: safePrepare((args: unknown) =>
+    normalizeArgs(args, { id: "node_id" }),
+  ) as any,
 
   async execute(_callId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) {
     const eng = await activeEngagementId();
