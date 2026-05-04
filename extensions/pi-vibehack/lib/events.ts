@@ -17,6 +17,17 @@ export function eventsPath(engagementDir: string): string {
   return join(engagementDir, "events.jsonl");
 }
 
+// v1.2 Phase 3: capture a reference to pi.appendEntry from the factory so every
+// vibehack event ALSO lands in the pi session JSONL via the supported
+// extension API (types.d.ts:845, runner.js binding). The engagement-scoped
+// events.jsonl remains canonical; pi's session view gets a mirror so /resume
+// shows the move history and registered message renderers can present them.
+type AppendEntryFn = (customType: string, data?: unknown) => void;
+let _appendEntry: AppendEntryFn | null = null;
+export function setPiAppendEntry(fn: AppendEntryFn | null): void {
+  _appendEntry = fn;
+}
+
 export async function appendEvent(engagementDir: string, ev: VibehackEvent): Promise<void> {
   if (!Value.Check(EventSchema, ev)) {
     const errs = [...Value.Errors(EventSchema, ev)].map((e) => `${e.path}: ${e.message}`);
@@ -24,6 +35,11 @@ export async function appendEvent(engagementDir: string, ev: VibehackEvent): Pro
   }
   await fs.mkdir(engagementDir, { recursive: true });
   await fs.appendFile(eventsPath(engagementDir), JSON.stringify(ev) + "\n", "utf8");
+  // Best-effort mirror to pi session JSONL — never block engagement writes on
+  // pi-side failure.
+  if (_appendEntry) {
+    try { _appendEntry(`vibehack/${(ev as any).event ?? "event"}`, ev); } catch {}
+  }
 }
 
 /**

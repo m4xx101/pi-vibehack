@@ -42,6 +42,35 @@ export default function vibehack(pi: any) {
   // The vibehackDcpRules named export below is preserved for backward compat.
   pi.events.emit("vibehack/dcp-rules", ALL_DCP_RULES);
 
+  // v1.2 Phase 3: thread pi.appendEntry into the events module so every
+  // vibehack event ALSO lands in the pi session JSONL (types.d.ts:845).
+  // events.jsonl remains the canonical engagement store; this is a mirror so
+  // /resume / TUI message renderers see vibehack moves.
+  if (typeof pi.appendEntry === "function") {
+    import("./lib/events.ts").then(({ setPiAppendEntry }) => {
+      setPiAppendEntry((customType: string, data?: unknown) => {
+        try { pi.appendEntry(customType, data); } catch {}
+      });
+    }).catch(() => {});
+  }
+
+  // Register a single renderer for every vibehack/* customType so pi's TUI
+  // shows distinctive lines for expand/prune/confirm/etc.
+  const VIBEHACK_EVENT_TYPES = [
+    "expand", "prune", "confirm", "evidence", "dead_end", "propose_chain",
+    "propose_specialist", "recall", "canary_planted", "engagement_start",
+    "steer", "chain_reject", "verification_pass",
+  ];
+  for (const t of VIBEHACK_EVENT_TYPES) {
+    try {
+      (pi as any).registerMessageRenderer?.(`vibehack/${t}`, (entry: any) => {
+        const d = entry?.data ?? entry;
+        const node = d?.node_id ? ` ${d.node_id}` : "";
+        return `[vibehack:${t}]${node}`;
+      });
+    } catch {}
+  }
+
   // Custom commands
 
   // /vibehack <target> — bootstrap engagement BEFORE the prompt body renders.
