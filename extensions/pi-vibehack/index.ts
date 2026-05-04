@@ -11,6 +11,7 @@ import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
 import {
   expandTool, pruneTool, confirmTool, evidenceTool, deadEndTool,
   proposeChainTool, proposeSpecialistTool, recallTool, canaryVerifyTool,
+  browserVerifyTool,
 } from "./tools/index.ts";
 
 export default function vibehack(pi: any) {
@@ -24,6 +25,7 @@ export default function vibehack(pi: any) {
   pi.registerTool(proposeSpecialistTool);
   pi.registerTool(recallTool);
   pi.registerTool(canaryVerifyTool);
+  pi.registerTool(browserVerifyTool);
 
   // Hooks
   registerSessionStartHook(pi);
