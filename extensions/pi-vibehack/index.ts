@@ -36,9 +36,9 @@ export default function vibehack(pi: any) {
   registerStatusBanner(pi);
   registerTreeViewer(pi);
 
-  // DCP rules — picked up by pi-dcp via the vibehackDcpRules export below.
-  // pi-dcp documents its own registration shape; we expose the rules and let it pull.
-  (globalThis as any).__vibehack_dcp_rules = ALL_DCP_RULES;
+  // DCP rules — published via pi.events so pi-dcp can subscribe.
+  // The vibehackDcpRules named export below is preserved for backward compat.
+  pi.events.emit("vibehack/dcp-rules", ALL_DCP_RULES);
 
   // Custom commands
 
