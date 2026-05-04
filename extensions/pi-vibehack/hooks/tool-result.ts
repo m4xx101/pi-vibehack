@@ -8,6 +8,7 @@ import {
   looksLikeHttpResponse,
   parseHttpHeaders,
 } from "../lib/negative-space.ts";
+import type { ExtensionAPI, ExtensionContext, ToolResultEvent } from "../lib/typed-pi.ts";
 
 export interface VerifierResult {
   verified?: boolean;
@@ -88,8 +89,14 @@ export function validateVerifierResult(
   };
 }
 
-export function registerToolResultHook(pi: any) {
-  pi.on("tool_result", async (event: any, _ctx: any) => {
+export function registerToolResultHook(pi: ExtensionAPI) {
+  pi.on("tool_result", async (typedEvent: ToolResultEvent, _ctx: ExtensionContext) => {
+    // Local untyped alias: this hook still reads legacy fields (`output`,
+    // `cost_usd`, `usage`, `context`, `structuredOutput`) that older pi
+    // versions exposed. The typed shape only guarantees `content`. Cast once
+    // here so the rest of the body compiles; full migration to typed
+    // {content, details, isError} is deferred (Phase 3+).
+    const event = typedEvent as ToolResultEvent & Record<string, any>;
     try {
     const eng = await activeEngagementId();
     if (!eng) return;
@@ -239,7 +246,7 @@ export function registerToolResultHook(pi: any) {
       }
     } catch {}
     } catch (e) {
-      try { _ctx?.ui?.notify?.(`[pi-vibehack] tool_result hook failed: ${(e as Error).message}`, "warn"); } catch {}
+      try { _ctx?.ui?.notify?.(`[pi-vibehack] tool_result hook failed: ${(e as Error).message}`, "warning"); } catch {}
       return;
     }
   });
