@@ -112,12 +112,51 @@ export const CanaryPlantedSchema = Type.Object({
   ts: TS_FIELD(),
 }, { additionalProperties: false });
 
+// v1.3: persona-switch event for the specialist registry.
+export const PersonaSwitchSchema = Type.Object({
+  event: Type.Literal("persona_switch"),
+  engagement_id: Type.String(),
+  ts: TS_FIELD(),
+  metadata: Type.Object({
+    name: Type.String(),
+    rationale: Type.Optional(Type.String()),
+  }, { additionalProperties: false }),
+}, { additionalProperties: false });
+
+// v1.3: structured vulnerability report.
+export const VulnReportedSchema = Type.Object({
+  event: Type.Literal("vuln_reported"),
+  engagement_id: Type.String(),
+  node_id: Type.String(),
+  ts: TS_FIELD(),
+  vuln: Type.Object({
+    title: Type.String(),
+    severity: Type.Union([
+      Type.Literal("info"),
+      Type.Literal("low"),
+      Type.Literal("medium"),
+      Type.Literal("high"),
+      Type.Literal("critical"),
+    ]),
+    cvss: Type.Optional(Type.Number({ minimum: 0, maximum: 10 })),
+    affected_url: Type.String(),
+    impact: Type.String(),
+    reproduction_steps: Type.Array(Type.String()),
+    evidence_paths: Type.Array(Type.String()),
+    owasp: Type.Optional(Type.String()),
+    cwe: Type.Optional(Type.String()),
+    report_path: Type.Optional(Type.String()),
+  }, { additionalProperties: false }),
+}, { additionalProperties: false });
+
 export const EventSchema = Type.Union([
   LegacyEventSchema,
   VerificationPassSchema,
   VerificationFailSchema,
   VerificationAdvisorySchema,
   CanaryPlantedSchema,
+  PersonaSwitchSchema,
+  VulnReportedSchema,
 ]);
 
 export type VibehackEvent = Static<typeof EventSchema>;

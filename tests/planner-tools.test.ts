@@ -160,14 +160,18 @@ describe("HYPOTHESIS_MUTATING_TOOLS / PROPOSAL_TOOLS partitioning", () => {
     for (const m of HYPOTHESIS_MUTATING_TOOLS) expect(PROPOSAL_TOOLS.has(m)).toBe(false);
   });
 
-  it("PLANNER_TOOL_NAMES is the union plus recall + canary-verify + browser-verify", () => {
+  it("PLANNER_TOOL_NAMES is the union + recall + canary/browser verify + v1.3 trio", () => {
     // 5 mutating + 2 proposal + vibehack_recall + vibehack_canary_verify
-    // + vibehack_browser_verify = 10. None of the latter three are
-    // mutating or proposals; their effects are observed via tool_result.
-    expect(PLANNER_TOOL_NAMES.length).toBe(10);
+    // + vibehack_browser_verify + v1.3: vibehack_use_persona,
+    // vibehack_report_vuln, vibehack_tool_search = 13. None of the
+    // non-mutating tools are proposals; effects are observed via tool_result.
+    expect(PLANNER_TOOL_NAMES.length).toBe(13);
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_recall");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_canary_verify");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_browser_verify");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_use_persona");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_report_vuln");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_tool_search");
   });
 });
 

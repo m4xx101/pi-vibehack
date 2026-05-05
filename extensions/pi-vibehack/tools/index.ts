@@ -8,6 +8,9 @@ export { proposeSpecialistTool } from "./propose-specialist.ts";
 export { recallTool } from "./recall.ts";
 export { canaryVerifyTool } from "./canary-verify.ts";
 export { browserVerifyTool } from "./browser-verify.ts";
+export { usePersonaTool } from "./use-persona.ts";
+export { reportVulnTool } from "./report-vuln.ts";
+export { toolSearchTool } from "./tool-search.ts";
 
 export const PLANNER_TOOL_NAMES = [
   "vibehack_expand",
@@ -20,6 +23,9 @@ export const PLANNER_TOOL_NAMES = [
   "vibehack_recall",
   "vibehack_canary_verify",
   "vibehack_browser_verify",
+  "vibehack_use_persona",
+  "vibehack_report_vuln",
+  "vibehack_tool_search",
 ];
 
 // Tools whose call genuinely advances the tree (state-mutating). Phase 5's

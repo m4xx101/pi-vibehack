@@ -11,7 +11,7 @@ import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
 import {
   expandTool, pruneTool, confirmTool, evidenceTool, deadEndTool,
   proposeChainTool, proposeSpecialistTool, recallTool, canaryVerifyTool,
-  browserVerifyTool,
+  browserVerifyTool, usePersonaTool, reportVulnTool, toolSearchTool,
 } from "./tools/index.ts";
 
 export default function vibehack(pi: any) {
@@ -26,6 +26,9 @@ export default function vibehack(pi: any) {
   pi.registerTool(recallTool);
   pi.registerTool(canaryVerifyTool);
   pi.registerTool(browserVerifyTool);
+  pi.registerTool(usePersonaTool);
+  pi.registerTool(reportVulnTool);
+  pi.registerTool(toolSearchTool);
 
   // Hooks
   registerSessionStartHook(pi);
@@ -245,6 +248,91 @@ export default function vibehack(pi: any) {
         node_id: p.root_node_id, rationale: args.trim() || "operator rejected",
       } as any);
       ctx.ui.notify(`chain ${p.root_node_id} rejected`, "info");
+    },
+  });
+
+  // v1.3: persona switching (CyberStrike "Tab between agents" pattern).
+  pi.registerCommand("persona", {
+    description: "List or switch the active specialist persona",
+    handler: async (args: string, ctx: any) => {
+      const { activeEngagementId } = await import("./lib/engagement.ts");
+      const { setActivePersona, getActivePersona, listPersonas, PERSONAS } =
+        await import("./lib/persona-registry.ts");
+      const eng = await activeEngagementId();
+      if (!eng) { ctx.ui.notify("no active engagement", "warning"); return; }
+      const name = args.trim();
+      if (!name || name === "list" || name === "?") {
+        const active = await getActivePersona(eng);
+        const lines = [
+          `active: ${active.name} (${active.label})`,
+          "",
+          "available:",
+          ...listPersonas().map((p) => `  ${p.name.padEnd(20)} — ${p.label}: ${p.description}`),
+        ];
+        ctx.ui.notify(lines.join("\n"), "info");
+        return;
+      }
+      if (!PERSONAS[name]) { ctx.ui.notify(`unknown persona '${name}'. Try /persona list`, "warning"); return; }
+      await setActivePersona(eng, name);
+      ctx.ui.notify(`persona → ${name} (${PERSONAS[name].label})`, "info");
+    },
+  });
+
+  // v1.3: list / search the bug-bounty tool catalogue.
+  pi.registerCommand("vibehack-tools", {
+    description: "Search the bug-bounty tool catalogue. Usage: /vibehack-tools [query]",
+    handler: async (args: string, ctx: any) => {
+      const q = args.trim();
+      const { TOOL_CATALOG } = await import("./data/tool-catalog.ts");
+      const { detectAllTools } = await import("./lib/tool-detector.ts");
+      const installed = detectAllTools();
+      const filtered = q
+        ? TOOL_CATALOG.filter((t) =>
+            t.name.includes(q.toLowerCase()) ||
+            t.description.toLowerCase().includes(q.toLowerCase()) ||
+            t.capabilities.some((c) => c.toLowerCase().includes(q.toLowerCase())),
+          )
+        : TOOL_CATALOG;
+      const out = filtered.slice(0, 25).map((t) => {
+        const mark = installed[t.name] ? "✓" : "·";
+        return `  ${mark} ${t.name.padEnd(22)} ${t.domain.join(",").padEnd(20)} ${t.description}`;
+      });
+      const total = Object.values(installed).filter(Boolean).length;
+      ctx.ui.notify(
+        [
+          `tool catalogue (${total}/${TOOL_CATALOG.length} installed${q ? `, filter "${q}"` : ""}):`,
+          ...out,
+        ].join("\n"),
+        "info",
+      );
+    },
+  });
+
+  // v1.3: autonomous engagement loop. Lightweight orchestration: emits a
+  // steer hint that asks the planner to keep mutating until N hypotheses are
+  // either confirmed or dead-ended. The actual loop is driven by pi-mono's
+  // existing turn cadence; we just bias the system prompt.
+  pi.registerCommand("vibehack-auto", {
+    description: "Bias the planner toward autonomous, depth-first hypothesis advancement",
+    handler: async (args: string, ctx: any) => {
+      const { activeEngagementId } = await import("./lib/engagement.ts");
+      const { appendSteer } = await import("./lib/pending-steer.ts");
+      const eng = await activeEngagementId();
+      if (!eng) { ctx.ui.notify("no active engagement", "warning"); return; }
+      const depth = parseInt(args.trim() || "5", 10);
+      const note = [
+        `<auto_mode depth=${depth}>`,
+        "Autonomous mode active. For the next several turns:",
+        "1. Always advance the tree: expand the highest-prior open node, OR confirm/dead-end it with evidence.",
+        "2. After 3 evidence rounds at the same node, commit to confirm or dead-end — do not loop indefinitely.",
+        "3. When a finding is confirmed and reproducible, call vibehack_report_vuln immediately.",
+        "4. Switch persona (vibehack_use_persona) when you cross a surface boundary (web → api → cloud).",
+        "5. Use vibehack_tool_search to discover the right scanner for each new surface — prefer installed tools.",
+        "6. Halt only when all open nodes are confirmed, dead-ended, or operator intervenes via /steer.",
+        "</auto_mode>",
+      ].join("\n");
+      await appendSteer(eng, note);
+      ctx.ui.notify(`autonomous mode armed (depth=${depth}). Ask the planner to continue.`, "info");
     },
   });
 }

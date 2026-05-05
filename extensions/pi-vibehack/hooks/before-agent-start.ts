@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { activeEngagementId, engagementDir, vibehackRoot } from "../lib/engagement.ts";
 import { detectProvider, loadPersona } from "../lib/persona.ts";
+import { getActivePersona } from "../lib/persona-registry.ts";
 import { PLANNER_TOOL_NAMES } from "../tools/index.ts";
 import { startTurn } from "../lib/turn-state.ts";
 import { getMutationGateMessage } from "./tool-result.ts";
@@ -152,9 +153,21 @@ export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
       } catch {}
     }
 
+    // v1.3: prepend the active specialist persona (web-application / mobile /
+    // cloud-security / etc.). General persona body is empty so this is a no-op
+    // by default.
+    let specialistPersona = "";
+    if (eng) {
+      try {
+        const p = await getActivePersona(eng);
+        if (p.body) specialistPersona = p.body;
+      } catch {}
+    }
+
     const blocks: string[] = [];
     if (persona) blocks.push(persona);
     if (plannerSys) blocks.push(plannerSys);
+    if (specialistPersona) blocks.push(specialistPersona);
     if (globalAgentsMd.trim()) blocks.push(`<pinned_global>\n${globalAgentsMd}\n</pinned_global>`);
     if (agentsMd.trim()) blocks.push(`<pinned_engagement>\n${agentsMd}\n</pinned_engagement>`);
     if (handoff.trim()) blocks.push(`<handoff_from_prior_subprocess>\n${handoff}\n</handoff_from_prior_subprocess>`);
