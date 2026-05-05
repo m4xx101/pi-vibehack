@@ -109,7 +109,15 @@ export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
         lazyLoaded = [...(await getLoadedSet(eng0))];
       }
     } catch {}
-    pi.setActiveTools?.(["read", "grep", ...PLANNER_TOOL_NAMES, ...lazyLoaded]);
+    // v1.4.2: include `bash` and `write` in the base set. Pre-1.4.2 we
+    // excluded bash by design ("planner reasons, doesn't execute") but in
+    // practice every non-Claude planner tries `$ ls -la` on its first move
+    // and pi-mono returns "Tool bash not found", which on some providers
+    // (deepseek, qwen) breaks the message-flow contract → 400 error. Keeping
+    // bash active means stray attempts complete cleanly and land in audit.log;
+    // the system prompt + <engagement_state> block direct the planner to
+    // prefer vibehack_run_<bin> wrappers instead.
+    pi.setActiveTools?.(["read", "grep", "bash", "write", ...PLANNER_TOOL_NAMES, ...lazyLoaded]);
 
     // Neither BeforeAgentStartEvent nor ExtensionContext have a documented
     // `model` field, but legacy pi versions exposed one — keep the defensive
@@ -175,9 +183,43 @@ export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
       } catch {}
     }
 
+    // v1.4.2: explicit <engagement_state> block so the planner ALWAYS knows
+    // whether it's on a fresh engagement (bootstrap=true → must call
+    // vibehack_expand kind:root as first move) or resuming. Without this,
+    // non-Claude planners (e.g. deepseek-v4-pro) read planner-system.md's
+    // "use read engagements/<id>/tree.md" instruction literally, fail with
+    // ENOENT, and never fire vibehack_expand.
+    let engagementStateBlock = "";
+    if (eng) {
+      try {
+        const { readEvents } = await import("../lib/events.ts");
+        const evs = await readEvents(engagementDir(eng));
+        const startEv = evs.find((e: any) => e.event === "engagement_start");
+        const target = (startEv as any)?.metadata?.target ?? eng;
+        const nonStartEvents = evs.filter((e: any) => e.event !== "engagement_start");
+        const bootstrap = nonStartEvents.length === 0;
+        const hasNodes = evs.some((e: any) =>
+          e.event === "node_add" || e.event === "expand" ||
+          e.event === "confirm" || e.event === "evidence");
+        engagementStateBlock = [
+          `<engagement_state>`,
+          `engagement_id: ${eng}`,
+          `target: ${target}`,
+          `bootstrap: ${bootstrap}`,
+          `event_count: ${evs.length}`,
+          `has_tree: ${hasNodes}`,
+          bootstrap
+            ? `\nFIRST MOVE REQUIRED: call vibehack_expand({parent_id:null, kind:"root", claim:"${target}", next_test:"enumerate the public surface (subdomains, hosts, technologies, auth posture)", falsifier:null}). Do NOT try to read tree.md — it does not exist yet.`
+            : `\nResume: read recent events.jsonl entries via the <recall> block below; pick the highest-priority open node from the tree.`,
+          `</engagement_state>`,
+        ].join("\n");
+      } catch {}
+    }
+
     const blocks: string[] = [];
     if (persona) blocks.push(persona);
     if (plannerSys) blocks.push(plannerSys);
+    if (engagementStateBlock) blocks.push(engagementStateBlock);
     if (specialistPersona) blocks.push(specialistPersona);
     if (globalAgentsMd.trim()) blocks.push(`<pinned_global>\n${globalAgentsMd}\n</pinned_global>`);
     if (agentsMd.trim()) blocks.push(`<pinned_engagement>\n${agentsMd}\n</pinned_engagement>`);

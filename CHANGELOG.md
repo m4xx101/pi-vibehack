@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.4.2 — 2026-05-06
+
+Operator-reported "/vibehack does nothing" — the planner started, hit "Tool bash not found", thrashed reading non-existent `tree.md`, and never emitted a single `vibehack_expand`. Five bugs fixed.
+
+### Fixed
+
+- **Planner now has an explicit FIRST-MOVE bootstrap.** The `before_agent_start` hook injects an `<engagement_state>` block at the top of every system prompt. On a fresh engagement (only `engagement_start` in `events.jsonl`) the block reads `bootstrap: true` and includes:
+  > **FIRST MOVE REQUIRED**: call `vibehack_expand({parent_id:null, kind:"root", claim:"<target>", next_test:"enumerate the public surface", falsifier:null})`. Do NOT try to read tree.md — it does not exist yet.
+
+  Non-Claude planners (deepseek, qwen, …) read `planner-system.md` very literally; without this block they'd loop on `read engagements/<id>/tree.md` (ENOENT) and never mutate the tree.
+- **`bash` re-enabled in the active tool set.** Pre-1.4.2 we excluded bash by design ("planner reasons, doesn't execute"). In practice every non-Claude planner tries `$ ls` on its first move, pi-mono returns "Tool bash not found", and on some providers the resulting message-flow corruption produces a 400 (`role 'tool' must respond to a preceding tool_calls`). Now bash + write are active as fallbacks; the system prompt + `<engagement_state>` direct the planner to prefer `vibehack_run_<bin>` wrappers.
+- **`prompts/planner-system.md` rewritten for v1.4 reality.** Old text said "Tools available are read, grep, and vibehack_*. No bash." which contradicted v1.4's `vibehack_run_<bin>` lazy wrappers. New text:
+  - Explicit "Your FIRST move on a new engagement" section.
+  - Lists every tool category (mutations, proposals, recall+verify, persona+report, lazy loading, run-tool wrappers).
+  - Explicit `vibehack_tool_search → vibehack_load_tools → vibehack_run_<bin>` flow.
+  - Lifts the "no bash" rule to "prefer wrappers; bash is a fallback that lands as opaque shell in audit.log".
+- **3 new regression tests** in `tests/engagement-state-bootstrap.test.ts`: fresh engagement → `bootstrap:true` + FIRST MOVE REQUIRED instruction; resumed engagement → `bootstrap:false` + Resume hint; active tool set includes `bash`/`read`/`grep`/`vibehack_*`.
+
+### Tests
+- 340 → 343 passing.
+
+### Migration
+
+- If you were depending on bash being absent from the planner's tool list, that's no longer the case. Check `~/.pi/agent/vibehack/engagements/<id>/audit.log` to see what bash invocations look like.
+- After updating, the very next planner turn on any engagement will see the new system prompt — no re-bootstrap needed.
+
 ## v1.4.1 — 2026-05-06
 
 Three operator-reported bugs from a fresh `node bin/install.js install` on Linux + `pi` boot.
