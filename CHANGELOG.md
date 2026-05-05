@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.3.0 — 2026-05-05
+
+CyberStrike-inspired bug-bounty pass. Studied [CyberStrike](https://github.com/CyberStrikeus/CyberStrike) — an open-source AI red-team agent — and pulled in its highest-leverage patterns for autonomous bug-bounty work, while keeping pi-vibehack's hypothesis-tree REPL semantics intact.
+
+### Phase A — Specialist persona registry
+- New `lib/persona-registry.ts` ships **12 domain personas**: `general`, `web-application`, `mobile-application`, `cloud-security`, `internal-network`, plus 7 vuln-class lenses (`idor`, `auth-bypass`, `mass-assignment`, `injection`, `business-logic`, `ssrf`, `file-attacks`). Each persona carries a short methodology body — OWASP WSTG sections for web, MASTG for mobile, CIS benchmarks for cloud, ATT&CK Lateral Movement for AD, etc.
+- Active persona is per-engagement state at `engagements/<id>/.active-persona`. The `before-agent-start` hook prepends the active persona's body to the system prompt, biasing tool selection toward the domain.
+- `/persona <name>` slash command: `list` shows the catalogue; `<name>` switches.
+- `vibehack_use_persona` tool lets the Planner self-switch when crossing surface boundaries (e.g. discovers IMDS → switches to `ssrf`; finds JWT → switches to `auth-bypass`).
+- New typed `persona_switch` event so persona changes appear in the tree timeline + are mirrored to the pi session JSONL via the v1.2 appendEntry pipe.
+
+### Phase B — Structured vulnerability reporting (`vibehack_report_vuln`)
+- New tool emits a HackerOne-format markdown report at `engagements/<id>/vulns/<node_id>.md` and a typed `vuln_reported` event with `{title, severity, cvss?, affected_url, impact, reproduction_steps, evidence_paths, owasp?, cwe?}`.
+- Severity is the standard 5-step scale (`info` / `low` / `medium` / `high` / `critical`) with optional CVSS 3.1 (0.0–10.0).
+- Markdown layout follows the de-facto HackerOne / Bugcrowd structure: Summary → Severity → Affected URL → Impact → Steps to Reproduce → Evidence → References (OWASP / CWE).
+- `prepareArguments` shim accepts common drift (`url`/`affectedUrl` → `affected_url`, `steps`/`repro` → `reproduction_steps`, `evidence` → `evidence_paths`, `cvssScore` → `cvss`).
+
+### Phase C — Bug-bounty tool catalogue + on-demand search
+- New `data/tool-catalog.ts` ships **30+ canonical bug-bounty tools** across recon, web fuzzing, vuln scanners, cloud, mobile, AD/network, and generic (subfinder, amass, httpx, naabu, nmap, masscan, ffuf, gobuster, feroxbuster, katana, waybackurls, gau, nuclei, nikto, wpscan, sqlmap, dalfox, prowler, scout, pacu, cloudbrute, frida, objection, apktool, jadx, nxc, impacket-secretsdump, bloodhound-python, responder, hydra, curl, jq).
+- New `lib/tool-detector.ts` resolves PATH presence via `which`/`where` (cross-platform — Kali, WSL, mac, Windows) at `session_start`. Cache-warmed so first call is instant.
+- New `vibehack_tool_search` tool — CyberStrike's lazy-registry pattern: instead of bloating context with 30 tool descriptions, the Planner asks for what it needs (`{query: "subdomain", domain: "recon"}`) and gets the top matches with installed-flag + install-hint.
+- `/vibehack-tools [query]` slash command for operator browsing.
+- Each catalogue entry: `{name, bin, domain[], capabilities[], description, example, install}`.
+
+### Phase D — Autonomous mode (`/vibehack-auto`)
+- `/vibehack-auto [depth]` injects an `<auto_mode>` steer that biases the Planner toward depth-first hypothesis advancement: always advance the tree, commit after 3 evidence rounds, immediately call `vibehack_report_vuln` on confirmed exploitable findings, persona-switch on surface boundaries, prefer installed tools via `vibehack_tool_search`, halt only when all open nodes are confirmed/dead-ended or operator intervenes.
+- No new dependency on a chain-runner subprocess — uses pi-mono's existing turn cadence, just steers the planner's behaviour.
+
+### Tools added
+- `vibehack_use_persona`
+- `vibehack_report_vuln`
+- `vibehack_tool_search`
+
+### Slash commands added
+- `/persona [list | <name>]`
+- `/vibehack-tools [query]`
+- `/vibehack-auto [depth]`
+
+### Schema additions (events)
+- `persona_switch` — `{name, rationale?}`
+- `vuln_reported` — full HackerOne-format payload
+
+### Tests
+- 305 → 318 (+13). Persona registry round-trip, alias normalization, vuln-report markdown shape + alias drift, tool-search ranking + domain filter + installed_only filter.
+
+### Why these picks (vs CyberStrike's full surface)
+- ✅ **Persona switching:** CyberStrike's biggest UX/methodology win — let one model wear different specialist hats.
+- ✅ **Structured vuln reports:** turns engagement output into shippable bounty submissions.
+- ✅ **Tool catalogue + lazy search:** keeps context lean; biases the Planner to use real bug-bounty tools, not improvised curl one-liners.
+- ❌ **Bolt remote tool execution:** out of scope — pi-vibehack runs in pi-mono's process; the operator can run remote tools via `pi.exec` + SSH already.
+- ❌ **MCP server orchestration:** pi-mono already speaks MCP; we don't need a parallel router.
+- ❌ **Web UI / Cloudflare tunnel:** different product surface; pi's TUI is the contract.
+
 ## v1.2.0 — 2026-05-05
 
 Major rewire pass: pi-vibehack now uses pi-mono APIs the way pi-mono actually exposes them, instead of reimplementing them. Every claim was fact-checked against pi-mono source (`@mariozechner/pi-coding-agent` `dist/core/extensions/types.d.ts` + `dist/core/resource-loader.js` + `dist/core/extensions/loader.js`). Plan: `docs/superpowers/specs/2026-05-04-pi-vibehack-v1.2-rewire-plan.md` (internal).

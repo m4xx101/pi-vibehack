@@ -29,6 +29,13 @@ export function registerSessionStartHook(pi: ExtensionAPI) {
       );
     }
 
+    // v1.3: warm the bug-bounty tool detector cache so vibehack_tool_search +
+    // /vibehack-tools return PATH-presence without a probe delay on first call.
+    try {
+      const { detectAllTools } = await import("../lib/tool-detector.ts");
+      detectAllTools();
+    } catch {}
+
     // Best-effort: register custom providers from ~/.pi/agent/vibehack/config.yaml.
     // Wrapped in try/catch so a bad config never blocks session_start.
     try {
