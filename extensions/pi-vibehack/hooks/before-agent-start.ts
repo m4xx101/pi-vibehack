@@ -98,7 +98,18 @@ export function registerBeforeAgentStartHook(pi: ExtensionAPI) {
     try {
     startTurn(`turn-${Date.now()}`);
 
-    pi.setActiveTools?.(["read", "grep", ...PLANNER_TOOL_NAMES]);
+    // v1.4: merge per-engagement loaded lazy tools (vibehack_run_<bin>) into
+    // the active set. CS's "lazy registry" pattern — registered eagerly at
+    // extension load, exposed only when the planner calls vibehack_load_tools.
+    let lazyLoaded: string[] = [];
+    try {
+      const eng0 = await activeEngagementId();
+      if (eng0) {
+        const { getLoadedSet } = await import("../lib/lazy-tools.ts");
+        lazyLoaded = [...(await getLoadedSet(eng0))];
+      }
+    } catch {}
+    pi.setActiveTools?.(["read", "grep", ...PLANNER_TOOL_NAMES, ...lazyLoaded]);
 
     // Neither BeforeAgentStartEvent nor ExtensionContext have a documented
     // `model` field, but legacy pi versions exposed one — keep the defensive

@@ -49,6 +49,38 @@ describe("vibehack_report_vuln tool", () => {
     expect(md).toContain("alert(1)");
   });
 
+  it("ui.confirm gates critical/high reports when hasUI=true; declined → user-blocked", async () => {
+    const { reportVulnTool } = await import("../extensions/pi-vibehack/tools/report-vuln.ts");
+    const { vi } = await import("vitest");
+    const confirm = vi.fn().mockResolvedValue(false);
+    const r: any = await (reportVulnTool as any).execute("c", {
+      node_id: "n_99",
+      title: "Critical RCE",
+      severity: "critical",
+      affected_url: "https://example.com",
+      impact: "Remote code execution leading to full server takeover.",
+      reproduction_steps: ["POST /api with payload"],
+    }, undefined, undefined, { hasUI: true, ui: { confirm } });
+    expect(confirm).toHaveBeenCalled();
+    expect(r.error).toBe("user-blocked");
+  });
+
+  it("ui.confirm is NOT prompted for low/medium severity", async () => {
+    const { reportVulnTool } = await import("../extensions/pi-vibehack/tools/report-vuln.ts");
+    const { vi } = await import("vitest");
+    const confirm = vi.fn();
+    const r: any = await (reportVulnTool as any).execute("c", {
+      node_id: "n_lo",
+      title: "Information disclosure",
+      severity: "low",
+      affected_url: "https://example.com",
+      impact: "Minor info leak in error response.",
+      reproduction_steps: ["GET /404"],
+    }, undefined, undefined, { hasUI: true, ui: { confirm } });
+    expect(confirm).not.toHaveBeenCalled();
+    expect(r.report_path).toBeTruthy();
+  });
+
   it("normalizes alias args (steps → reproduction_steps, etc.)", async () => {
     const { reportVulnTool } = await import("../extensions/pi-vibehack/tools/report-vuln.ts");
     const out = (reportVulnTool as any).prepareArguments({
