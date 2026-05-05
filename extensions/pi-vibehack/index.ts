@@ -5,6 +5,7 @@ import { registerToolResultHook } from "./hooks/tool-result.ts";
 import { registerBeforeProviderRequestHook } from "./hooks/before-provider-request.ts";
 import { registerSessionBeforeCompactHook } from "./hooks/session-before-compact.ts";
 import { registerResourcesDiscoverHook } from "./hooks/resources-discover.ts";
+import { registerAgentEndHook } from "./hooks/agent-end.ts";
 import { registerStatusBanner } from "./ui/status-banner.ts";
 import { registerTreeViewer } from "./ui/tree-viewer.ts";
 import { ALL_DCP_RULES } from "./dcp-rules/index.ts";
@@ -30,6 +31,17 @@ export default function vibehack(pi: any) {
   pi.registerTool(reportVulnTool);
   pi.registerTool(toolSearchTool);
 
+  // v1.4: lazy bug-bounty tools — register one wrapper per catalogue entry and
+  // the load/unload meta-tools. They're inactive by default; before-agent-start
+  // picks up the per-engagement loaded set and merges it into setActiveTools.
+  import("./lib/lazy-tools.ts").then(({ buildLazyTools, loadToolsTool, unloadToolsTool }) => {
+    for (const t of buildLazyTools(pi)) {
+      try { pi.registerTool(t); } catch {}
+    }
+    try { pi.registerTool(loadToolsTool); } catch {}
+    try { pi.registerTool(unloadToolsTool); } catch {}
+  }).catch(() => {});
+
   // Hooks
   registerSessionStartHook(pi);
   registerBeforeAgentStartHook(pi);
@@ -38,6 +50,7 @@ export default function vibehack(pi: any) {
   registerBeforeProviderRequestHook(pi);
   registerSessionBeforeCompactHook(pi);
   registerResourcesDiscoverHook(pi);
+  registerAgentEndHook(pi);
 
   // UI
   registerStatusBanner(pi);
@@ -313,26 +326,45 @@ export default function vibehack(pi: any) {
   // either confirmed or dead-ended. The actual loop is driven by pi-mono's
   // existing turn cadence; we just bias the system prompt.
   pi.registerCommand("vibehack-auto", {
-    description: "Bias the planner toward autonomous, depth-first hypothesis advancement",
+    description:
+      "Drive an autonomous engagement loop. Usage: /vibehack-auto <max-turns | stop | status>",
     handler: async (args: string, ctx: any) => {
       const { activeEngagementId } = await import("./lib/engagement.ts");
       const { appendSteer } = await import("./lib/pending-steer.ts");
+      const { startAutoMode, haltAutoMode, readAutoMode } =
+        await import("./lib/auto-loop.ts");
       const eng = await activeEngagementId();
       if (!eng) { ctx.ui.notify("no active engagement", "warning"); return; }
-      const depth = parseInt(args.trim() || "5", 10);
+      const arg = args.trim();
+      if (arg === "stop") {
+        const st = await haltAutoMode(eng, "operator stop");
+        ctx.ui.notify(`auto-mode stopped (turns_used=${st.turns_used})`, "info");
+        return;
+      }
+      if (arg === "status" || arg === "?") {
+        const st = await readAutoMode(eng);
+        ctx.ui.notify(
+          `auto-mode: enabled=${st.enabled} turns=${st.turns_used}/${st.max_turns}` +
+          (st.halted_reason ? ` halted=${st.halted_reason}` : ""),
+          "info",
+        );
+        return;
+      }
+      const max = parseInt(arg || "10", 10);
+      const st = await startAutoMode(eng, isNaN(max) ? 10 : max);
       const note = [
-        `<auto_mode depth=${depth}>`,
-        "Autonomous mode active. For the next several turns:",
-        "1. Always advance the tree: expand the highest-prior open node, OR confirm/dead-end it with evidence.",
+        `<auto_mode budget=${st.max_turns}>`,
+        "Autonomous mode active. Per turn:",
+        "1. Always advance the tree: expand the highest-priority open node, OR confirm/dead-end it with evidence.",
         "2. After 3 evidence rounds at the same node, commit to confirm or dead-end — do not loop indefinitely.",
         "3. When a finding is confirmed and reproducible, call vibehack_report_vuln immediately.",
-        "4. Switch persona (vibehack_use_persona) when you cross a surface boundary (web → api → cloud).",
-        "5. Use vibehack_tool_search to discover the right scanner for each new surface — prefer installed tools.",
-        "6. Halt only when all open nodes are confirmed, dead-ended, or operator intervenes via /steer.",
+        "4. Switch persona (vibehack_use_persona) when you cross a surface boundary.",
+        "5. Use vibehack_tool_search → vibehack_load_tools to expose the right scanner; prefer installed tools.",
+        "6. Halt is automatic when all open nodes are resolved or budget exhausted; operator can /vibehack-auto stop.",
         "</auto_mode>",
       ].join("\n");
       await appendSteer(eng, note);
-      ctx.ui.notify(`autonomous mode armed (depth=${depth}). Ask the planner to continue.`, "info");
+      ctx.ui.notify(`auto-mode armed (budget=${st.max_turns}). Ask the planner to start.`, "info");
     },
   });
 }

@@ -160,18 +160,22 @@ describe("HYPOTHESIS_MUTATING_TOOLS / PROPOSAL_TOOLS partitioning", () => {
     for (const m of HYPOTHESIS_MUTATING_TOOLS) expect(PROPOSAL_TOOLS.has(m)).toBe(false);
   });
 
-  it("PLANNER_TOOL_NAMES is the union + recall + canary/browser verify + v1.3 trio", () => {
+  it("PLANNER_TOOL_NAMES is the union + recall + canary/browser verify + v1.3 + v1.4 meta", () => {
     // 5 mutating + 2 proposal + vibehack_recall + vibehack_canary_verify
     // + vibehack_browser_verify + v1.3: vibehack_use_persona,
-    // vibehack_report_vuln, vibehack_tool_search = 13. None of the
-    // non-mutating tools are proposals; effects are observed via tool_result.
-    expect(PLANNER_TOOL_NAMES.length).toBe(13);
+    // vibehack_report_vuln, vibehack_tool_search + v1.4 meta:
+    // vibehack_load_tools, vibehack_unload_tools = 15. Lazy run-tool
+    // wrappers are NOT in this list — they're activated dynamically via
+    // pi.setActiveTools at before-agent-start when loaded.
+    expect(PLANNER_TOOL_NAMES.length).toBe(15);
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_recall");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_canary_verify");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_browser_verify");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_use_persona");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_report_vuln");
     expect(PLANNER_TOOL_NAMES).toContain("vibehack_tool_search");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_load_tools");
+    expect(PLANNER_TOOL_NAMES).toContain("vibehack_unload_tools");
   });
 });
 

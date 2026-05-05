@@ -11,6 +11,8 @@ import { Type } from "@sinclair/typebox";
 import { TOOL_CATALOG, type ToolEntry } from "../data/tool-catalog.ts";
 import { detectAllTools } from "../lib/tool-detector.ts";
 import { normalizeArgs, safePrepare } from "../lib/prepare-args.ts";
+import { lazyToolName, getLoadedSet } from "../lib/lazy-tools.ts";
+import { activeEngagementId } from "../lib/engagement.ts";
 
 const DOMAINS = ["web", "network", "cloud", "mobile", "recon", "vuln", "fuzz", "report"] as const;
 
@@ -52,6 +54,12 @@ export const toolSearchTool = {
     const installed = detectAllTools();
     const query = String(params.query ?? "").trim();
     const limit = params.limit ?? 8;
+    // v1.4: report which lazy tools are currently loaded for the active eng.
+    let loadedSet = new Set<string>();
+    try {
+      const eng = await activeEngagementId();
+      if (eng) loadedSet = await getLoadedSet(eng);
+    } catch {}
 
     let matches = TOOL_CATALOG;
     if (params.installed_only) matches = matches.filter((t) => installed[t.name]);
@@ -62,22 +70,31 @@ export const toolSearchTool = {
       .filter((x) => query ? x.score > 0 : true)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(({ entry }) => ({
-        name: entry.name,
-        domain: entry.domain,
-        capabilities: entry.capabilities,
-        description: entry.description,
-        example: entry.example,
-        installed: !!installed[entry.name],
-        install_hint: installed[entry.name] ? undefined : entry.install,
-      }));
+      .map(({ entry }) => {
+        const id = lazyToolName(entry);
+        return {
+          id, // v1.4: feed this to vibehack_load_tools to expose the wrapper
+          name: entry.name,
+          domain: entry.domain,
+          capabilities: entry.capabilities,
+          description: entry.description,
+          example: entry.example,
+          installed: !!installed[entry.name],
+          loaded: loadedSet.has(id),
+          install_hint: installed[entry.name] ? undefined : entry.install,
+        };
+      });
 
     return {
       query,
       domain: params.domain ?? null,
       total_in_catalogue: TOOL_CATALOG.length,
       total_installed: Object.values(installed).filter(Boolean).length,
+      total_loaded: loadedSet.size,
       matches: ranked,
+      hint: ranked.length
+        ? "Call vibehack_load_tools({tool_ids:['<id>']}) to make a tool callable in the next turn."
+        : undefined,
     };
   },
 };

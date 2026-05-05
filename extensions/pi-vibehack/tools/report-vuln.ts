@@ -95,9 +95,33 @@ export const reportVulnTool = {
     }),
   ) as any,
 
-  async execute(_callId: string, params: any): Promise<any> {
+  async execute(
+    _callId: string,
+    params: any,
+    _signal?: any,
+    _onUpdate?: any,
+    ctx?: { hasUI?: boolean; ui?: { confirm?: (t: string, m: string, opts?: any) => Promise<boolean> } },
+  ): Promise<any> {
     const eng = await activeEngagementId();
     if (!eng) return { error: "no active engagement" };
+    // v1.4: parity with canary-verify — gate the write behind ctx.ui.confirm
+    // when a UI is attached. The vuln markdown is small but a "report" is a
+    // commitment (it shows up in /resume + downstream pipelines), so the
+    // operator should sign off on critical/high reports. Print/RPC mode skips.
+    if (ctx?.hasUI && typeof ctx.ui?.confirm === "function") {
+      const big = params.severity === "critical" || params.severity === "high";
+      if (big) {
+        let ok = false;
+        try {
+          ok = !!(await ctx.ui.confirm(
+            `Report ${params.severity.toUpperCase()} vuln?`,
+            `${params.title} on ${params.affected_url}`,
+            { timeout: 60_000 } as any,
+          ));
+        } catch { ok = false; }
+        if (!ok) return { error: "user-blocked", title: params.title };
+      }
+    }
     const dir = engagementDir(eng);
     const vulnsDir = join(dir, "vulns");
     await fs.mkdir(vulnsDir, { recursive: true });

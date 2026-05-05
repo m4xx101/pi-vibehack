@@ -11,6 +11,9 @@ export { browserVerifyTool } from "./browser-verify.ts";
 export { usePersonaTool } from "./use-persona.ts";
 export { reportVulnTool } from "./report-vuln.ts";
 export { toolSearchTool } from "./tool-search.ts";
+// v1.4 lazy tool meta-tools (re-exported here so PLANNER_TOOL_NAMES
+// consistency test sees the registered names).
+export { loadToolsTool, unloadToolsTool } from "../lib/lazy-tools.ts";
 
 export const PLANNER_TOOL_NAMES = [
   "vibehack_expand",
@@ -26,6 +29,9 @@ export const PLANNER_TOOL_NAMES = [
   "vibehack_use_persona",
   "vibehack_report_vuln",
   "vibehack_tool_search",
+  // v1.4 lazy-tool meta-tools (always active so the model can discover/load):
+  "vibehack_load_tools",
+  "vibehack_unload_tools",
 ];
 
 // Tools whose call genuinely advances the tree (state-mutating). Phase 5's

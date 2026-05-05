@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.4.0 — 2026-05-05
+
+Honest follow-up to v1.3. Read CyberStrike's actual `tool/tool-search.ts`, `tool/lazy-registry.ts`, `tool/vulnerability.ts` source (I'd only read filenames before) and rebuilt three things to match the real pattern.
+
+### Phase 1 — Real lazy tool loading (vs v1.3's discovery-only `tool_search`)
+
+**Was:** v1.3's `vibehack_tool_search` returned shell command hints; the planner ran them via `bash`. CyberStrike's actual pattern is **dynamic registration** — search returns tool IDs, `load_tools` puts them on the LLM's tool list for the next turn, unloaded tools eat zero context.
+
+**Now:**
+- New `lib/lazy-tools.ts` builds **one wrapper tool per catalogue entry** (`vibehack_run_<bin>`) at extension load. Each wrapper accepts `{args:string[], cwd?, timeout_ms?}` and delegates to `pi.exec(bin, args, opts)`. Returns `{exit_code, stdout, stderr}` or `{error:"not-installed", install_hint}`.
+- All wrappers are eagerly **registered** but inactive. Per-engagement state at `.loaded-tools` tracks the loaded set.
+- `vibehack_load_tools({tool_ids})` and `vibehack_unload_tools({tool_ids})` mutate the loaded set.
+- `before-agent-start` reads the loaded set and passes `pi.setActiveTools([...base, ...loaded])` so only loaded wrappers reach the model.
+- `vibehack_tool_search` now returns each match's `id` (`vibehack_run_<bin>`) + `loaded` flag. Planner's flow: search → load → call.
+- 30+ wrappers ship out of the box (subfinder, nuclei, sqlmap, ffuf, prowler, frida, nxc, …); on a fresh `pi -e ./extensions/pi-vibehack/index.ts` they're all dormant until invoked.
+
+### Phase 2 — Real autonomous loop (vs v1.3's steer-only "auto mode")
+
+**Was:** v1.3's `/vibehack-auto` injected one steer note and hoped the planner cooperated. No loop driver, no halt detection, no budget.
+
+**Now:**
+- New `lib/auto-loop.ts` persists `{enabled, max_turns, turns_used, halted_reason}` per engagement at `.auto-mode`. Budget clamped to `[1, 50]`.
+- New `hooks/agent-end.ts` fires on every `agent_end`: if auto-mode is enabled and budget remains, calls `pi.sendUserMessage("[auto-mode turn N/M] continue: ...", {deliverAs:"followUp"})`. The wheel turns automatically until halt.
+- Halt conditions (any one stops): budget exhausted; all open hypothesis nodes confirmed/dead-ended (via `foldNodes`); operator runs `/vibehack-auto stop`; `sendUserMessage` errors.
+- `/vibehack-auto <budget>` starts; `/vibehack-auto stop` halts; `/vibehack-auto status` reports.
+
+### Phase 3 — `report_vuln` permission gate (parity with canary-verify)
+
+- `vibehack_report_vuln` now gates `critical` and `high` severity reports behind `ctx.ui.confirm` when `ctx.hasUI=true`. Print/RPC mode (`hasUI=false`) skips. 60s timeout per Risk #4 — timeout treated as decline. Returns `{error:"user-blocked"}`.
+- `low`/`medium`/`info` reports go through unprompted (low-stakes; the operator can review the markdown later).
+
+### Tools added
+- `vibehack_load_tools` — load catalogue tools into the active set
+- `vibehack_unload_tools` — remove from active set
+- 30+ `vibehack_run_<bin>` wrappers (registered eagerly, activated on load)
+
+### Hooks added
+- `agent_end` — autonomous-mode follow-up driver
+
+### Files
+- New: `lib/lazy-tools.ts`, `lib/auto-loop.ts`, `hooks/agent-end.ts`
+- Updated: `tools/tool-search.ts` (returns IDs + loaded flag), `tools/report-vuln.ts` (ui.confirm gate), `hooks/before-agent-start.ts` (merges loaded set into active tools), `index.ts` (registers wrappers + agent-end hook + upgraded /vibehack-auto), `tools/index.ts` (re-exports load/unload), `tests/planner-tools.test.ts` (count: 13 → 15)
+
+### Tests
+- 322 → 337 (+15: 7 lazy-tools + 6 auto-loop + 2 report-vuln confirm gate). All passing.
+
+### Honest delta vs CyberStrike
+- ✅ Lazy registration with on-demand activation — same shape as `LazyToolRegistry`.
+- ✅ Real loop driver via `pi.sendUserMessage(followUp)` — analogous to CS's `agent.ts` follow-up dispatch.
+- ✅ Permission-gated destructive writes via `ctx.ui.confirm` — equivalent to CS's `ctx.ask({permission})`.
+- ⚠️ Token-budget tracking is hint-only (we report `total_loaded`, not estimated tokens). CS tracks per-tool token cost via `LazyToolRegistry.stats()`. Acceptable: tools are uniformly small wrappers.
+- ⚠️ Live runtime smoke testing inside `pi` itself — still not done. All assertions are vitest-level. Operator-side validation is the next step.
+
 ## v1.3.0 — 2026-05-05
 
 CyberStrike-inspired bug-bounty pass. Studied [CyberStrike](https://github.com/CyberStrikeus/CyberStrike) — an open-source AI red-team agent — and pulled in its highest-leverage patterns for autonomous bug-bounty work, while keeping pi-vibehack's hypothesis-tree REPL semantics intact.
