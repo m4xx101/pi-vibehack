@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.4.1 — 2026-05-06
+
+Three operator-reported bugs from a fresh `node bin/install.js install` on Linux + `pi` boot.
+
+### Fixed
+
+- **`pi-vibehack --version` no longer triggers a reinstall.** `parseArgs` puts `--version` into `args.version=true`, not `args._`, so the dispatch `cmd = args._[0] ?? "install"` defaulted to `install` and re-ran the whole flow. Added an upfront `--version` / `--help` short-circuit before the install/update/uninstall switch.
+- **`@m4xx101/vibeshack@1.4.0` was tagged on git but never published to npm**, so pi-mono's lazy reinstall (`npm install -g @m4xx101/vibeshack@1.4.0`) failed with `ETARGET No matching version found`. v1.4.1 ships to npm under `@latest` so the pin resolves.
+- **"[Prompt conflicts] … (skipped)" warnings on every pi boot.** `resources_discover` was returning the same `prompts/` and `skills/` paths that `package.json#pi.prompts`/`pi.skills` already declared. pi-mono registered both, deduped the second, and logged the collision. Now `resources_discover` returns ONLY non-bundled extras: per-engagement `engagements/<id>/prompts` if present, global `~/.pi/agent/vibehack/prompts` if present. Empty arrays by default — no collisions on stock installs.
+
+### Tests
+- 337 → 339. Updated `tests/resources-discover.test.ts` to assert the hook does NOT return bundled paths and DOES surface per-engagement / global extras when they exist on disk.
+
 ## v1.4.0 — 2026-05-05
 
 Honest follow-up to v1.3. Read CyberStrike's actual `tool/tool-search.ts`, `tool/lazy-registry.ts`, `tool/vulnerability.ts` source (I'd only read filenames before) and rebuilt three things to match the real pattern.

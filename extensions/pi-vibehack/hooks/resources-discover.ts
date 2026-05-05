@@ -1,28 +1,57 @@
-// resources_discover hook — feeds pi-mono the bundled vibehack skills and
-// prompt directories so they're discoverable via pi's native loader. This
-// replaces the v1.1.x approach of stuffing them into the system prompt by
-// hand. See `pi-mono dist/core/extensions/types.d.ts:376` —
-// `resources_discover` returns `{skillPaths, promptPaths, themePaths}`.
+// resources_discover hook — surfaces EXTRA, per-session resources to pi-mono.
 //
-// Phase 2 of the v1.2 rewire plan.
+// IMPORTANT: bundled prompts/ and skills/ are declared in package.json#pi
+// (extensions/skills/prompts arrays). pi-mono's resource loader picks those
+// up from the package manifest at extension scan time. Returning the SAME
+// paths from this hook causes "[Prompt conflicts] ... (skipped)" warnings on
+// every boot — pi sees the same prompt registered twice and dedupes noisily.
+//
+// So this hook returns ONLY paths that aren't in the package manifest:
+//   • per-engagement specialist prompts (engagements/<id>/prompts/) if present
+//   • user-pinned global prompts (~/.pi/agent/vibehack/prompts/) if present
+//
+// Empty arrays are fine — pi-mono treats {skillPaths:[], promptPaths:[]} as a
+// no-op rather than a complaint.
 
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import type { ExtensionAPI } from "../lib/typed-pi.ts";
+import { activeEngagementId, engagementDir, vibehackRoot } from "../lib/engagement.ts";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-// hooks/ -> extensions/pi-vibehack/ -> extensions/ -> repo root
-const PKG_ROOT = resolve(HERE, "..", "..", "..");
+async function dirExists(p: string): Promise<boolean> {
+  try { const st = await fs.stat(p); return st.isDirectory(); } catch { return false; }
+}
 
-export function computeResourcePaths(): { skillPaths: string[]; promptPaths: string[] } {
-  return {
-    skillPaths: [join(PKG_ROOT, "skills")],
-    promptPaths: [join(PKG_ROOT, "prompts")],
-  };
+export async function computeResourcePaths(): Promise<{ skillPaths: string[]; promptPaths: string[] }> {
+  const promptPaths: string[] = [];
+  const skillPaths: string[] = [];
+
+  // Per-engagement extras
+  try {
+    const eng = await activeEngagementId();
+    if (eng) {
+      const engPrompts = join(engagementDir(eng), "prompts");
+      const engSkills = join(engagementDir(eng), "skills");
+      if (await dirExists(engPrompts)) promptPaths.push(engPrompts);
+      if (await dirExists(engSkills)) skillPaths.push(engSkills);
+    }
+  } catch {}
+
+  // Operator-pinned globals (live alongside vibehack data dir, NOT the package)
+  try {
+    const root = vibehackRoot() || join(homedir(), ".pi", "agent", "vibehack");
+    const userPrompts = join(root, "prompts");
+    const userSkills = join(root, "skills");
+    if (await dirExists(userPrompts)) promptPaths.push(userPrompts);
+    if (await dirExists(userSkills)) skillPaths.push(userSkills);
+  } catch {}
+
+  return { skillPaths, promptPaths };
 }
 
 export function registerResourcesDiscoverHook(pi: ExtensionAPI) {
   pi.on("resources_discover", async () => {
-    return computeResourcePaths();
+    return await computeResourcePaths();
   });
 }

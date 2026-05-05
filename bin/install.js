@@ -233,12 +233,22 @@ async function cmdUninstall(args) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+// --version / --help short-circuit BEFORE dispatch so they don't fall through
+// to the default "install" command. parseArgs puts --version into args.version,
+// not args._, so the previous `cmd === "--version"` branch was unreachable.
+if (args.version === true || args.help === true || args._[0] === "-v" || args._[0] === "--version" || args._[0] === "-h" || args._[0] === "--help") {
+  if (args.help === true || args._[0] === "-h" || args._[0] === "--help") {
+    console.log("Usage: pi-vibehack [install|update|uninstall] [--profile=hybrid|haiku|opus] [--with-dcp]\n       pi-vibehack --version");
+  } else {
+    console.log(PKG.version);
+  }
+  process.exit(0);
+}
 const cmd = args._[0] ?? "install";
 try {
   if (cmd === "install") await cmdInstall(args);
   else if (cmd === "update") await cmdUpdate(args);
   else if (cmd === "uninstall") await cmdUninstall(args);
-  else if (cmd === "--version" || cmd === "-v") { console.log(PKG.version); }
   else { console.error(`unknown command: ${cmd}\nUsage: pi-vibehack [install|update|uninstall|--version]`); process.exit(2); }
 } catch (e) {
   console.error(`✗ ${e.message}`);

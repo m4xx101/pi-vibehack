@@ -1,22 +1,70 @@
-import { describe, it, expect } from "vitest";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { computeResourcePaths } from "../extensions/pi-vibehack/hooks/resources-discover.ts";
+// resources_discover hook — surface ONLY extra paths (per-engagement prompts,
+// global pinned prompts). Bundled prompts are in package.json#pi.prompts and
+// must NOT be returned here, otherwise pi-mono logs "[Prompt conflicts]…
+// (skipped)" warnings on every boot.
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const PKG_ROOT = resolve(HERE, "..");
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import {
+  computeResourcePaths,
+  registerResourcesDiscoverHook,
+} from "../extensions/pi-vibehack/hooks/resources-discover.ts";
 
 describe("resources_discover handler", () => {
-  it("returns the bundled skills + prompts directories", () => {
-    const out = computeResourcePaths();
-    expect(out.skillPaths).toContain(join(PKG_ROOT, "skills"));
-    expect(out.promptPaths).toContain(join(PKG_ROOT, "prompts"));
+  let tmp: string;
+  let origDataDir: string | undefined;
+
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(join(tmpdir(), "vh-rd-"));
+    origDataDir = process.env.VIBEHACK_DATA_DIR;
+    process.env.VIBEHACK_DATA_DIR = tmp;
+  });
+
+  afterEach(async () => {
+    if (origDataDir === undefined) delete process.env.VIBEHACK_DATA_DIR;
+    else process.env.VIBEHACK_DATA_DIR = origDataDir;
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  it("returns empty arrays when no per-engagement / global extras exist", async () => {
+    const out = await computeResourcePaths();
+    expect(out.skillPaths).toEqual([]);
+    expect(out.promptPaths).toEqual([]);
+  });
+
+  it("does NOT return the bundled package prompts/ or skills/ directories", async () => {
+    // Bundled paths are declared in package.json#pi and must not be re-returned
+    // here, otherwise pi-mono logs collision warnings every boot.
+    const out = await computeResourcePaths();
+    for (const p of out.promptPaths) {
+      expect(p.includes("/extensions/") || p.includes("\\extensions\\")).toBe(false);
+    }
+    for (const p of out.skillPaths) {
+      expect(p.includes("/extensions/") || p.includes("\\extensions\\")).toBe(false);
+    }
+  });
+
+  it("surfaces per-engagement prompts/ directory when present", async () => {
+    const { setActiveEngagement, newEngagementId, engagementDir } =
+      await import("../extensions/pi-vibehack/lib/engagement.ts");
+    const eng = newEngagementId("rd-target");
+    const dir = engagementDir(eng);
+    await fs.mkdir(join(dir, "prompts"), { recursive: true });
+    await setActiveEngagement(eng);
+
+    const out = await computeResourcePaths();
+    expect(out.promptPaths.some((p: string) => p.endsWith("prompts") && p.includes(eng))).toBe(true);
+  });
+
+  it("surfaces global <vibehack-root>/prompts when present", async () => {
+    await fs.mkdir(join(tmp, "prompts"), { recursive: true });
+    const out = await computeResourcePaths();
+    expect(out.promptPaths.some((p: string) => p.startsWith(tmp) && p.endsWith("prompts"))).toBe(true);
   });
 
   it("registerResourcesDiscoverHook installs a resources_discover handler", async () => {
-    const { registerResourcesDiscoverHook } = await import(
-      "../extensions/pi-vibehack/hooks/resources-discover.ts"
-    );
     const calls: Array<{ event: string }> = [];
     let captured: Function | null = null;
     const fakePi: any = {
@@ -30,7 +78,5 @@ describe("resources_discover handler", () => {
     const result = await captured!({}, {});
     expect(Array.isArray(result.skillPaths)).toBe(true);
     expect(Array.isArray(result.promptPaths)).toBe(true);
-    expect(result.skillPaths.some((p: string) => p.endsWith("skills"))).toBe(true);
-    expect(result.promptPaths.some((p: string) => p.endsWith("prompts"))).toBe(true);
   });
 });
