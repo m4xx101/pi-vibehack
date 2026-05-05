@@ -2,6 +2,49 @@
 
 Common problems and their fixes. Symptom → diagnosis → fix.
 
+> **First check:** `pi-vibehack --version` — if this re-runs the installer, you're on a version older than v1.4.1. Update with `pi-vibehack update` or re-run the curl-pipe install.
+
+---
+
+## v1.4 known issues (and fixes)
+
+### `npm error code ETARGET — No matching version found for @m4xx101/vibeshack@1.4.X`
+
+**Symptom:** pi-mono boots, then crashes with `npm install -g @m4xx101/vibeshack@1.4.X failed with code 1`.
+
+**Cause:** A version was tagged on git but not yet published to npm. pi-mono pins the exact version in `~/.pi/agent/settings.json` and tries to lazy-reinstall it on every boot.
+
+**Fix:**
+```bash
+pi-vibehack update    # pulls latest from npm and re-pins
+# or, force a specific version:
+npm i -g @m4xx101/vibeshack@latest
+pi-vibehack install
+```
+
+If you maintain a fork, ensure every git tag is followed by `npm publish --access public`.
+
+### `[Prompt conflicts] … (skipped)` warnings on every boot
+
+**Symptom:** pi prints two-dozen `"<command>" collision: ✓ extension:index (temp) … ✗ extension:index (temp) … (skipped)` lines on session start.
+
+**Cause:** Pre-v1.4.1 `resources_discover` hook returned the same `prompts/` and `skills/` paths that `package.json#pi.prompts`/`pi.skills` already declared. pi-mono registered both, deduped the second, logged the collision.
+
+**Fix:** Update to v1.4.1+. The hook now returns only non-bundled extras (per-engagement and global pinned dirs).
+```bash
+pi-vibehack update
+```
+
+### `pi-vibehack --version` triggers a full reinstall
+
+**Symptom:** Running `pi-vibehack --version` re-runs every step of the installer.
+
+**Cause:** Pre-v1.4.1 `parseArgs` put `--version` into `args.version` (not `args._`), so the dispatch defaulted to `install`.
+
+**Fix:** Update to v1.4.1+.
+
+---
+
 ## Install issues
 
 ### `pi: command not found`

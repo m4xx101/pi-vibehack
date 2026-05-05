@@ -2,7 +2,26 @@
 
 ## What is pi-vibehack?
 
-A context-aware vibe-hacking harness for [pi-mono](https://github.com/badlogic/pi-mono). It turns pi into a security-research engine: hypothesis-tree REPL, three-role subprocess isolation, graphify-backed wire-layer recall, on-the-fly tool synthesis. Bug bounty / pentest / CTF / red team.
+A context-aware vibe-hacking harness for [pi-mono](https://github.com/badlogic/pi-mono). It turns pi into a security-research engine: hypothesis-tree REPL, three-role subprocess isolation, graphify-backed wire-layer recall, on-the-fly tool synthesis, dynamic tool loading, and a real autonomous loop. Bug bounty / pentest / CTF / red team.
+
+## How is autonomous mode actually autonomous? (v1.4)
+
+`/vibehack-auto <budget>` writes a per-engagement state file at `engagements/<id>/.auto-mode` and arms the `agent_end` hook. After every model turn, the hook calls `pi.sendUserMessage("[auto-mode turn N/M] continue: ...", {deliverAs:"followUp"})`. pi-mono delivers the follow-up into the next turn, the planner advances the tree, and the cycle repeats. Halt conditions: budget exhausted, all open hypothesis nodes resolved (confirmed/dead), operator runs `/vibehack-auto stop`, or `pi.sendUserMessage` errors. **Not a steer note hack** — a real loop driver via the documented pi-mono `sendUserMessage` API.
+
+## What's the lazy tool loading thing? (v1.4)
+
+Inspired by CyberStrike's `LazyToolRegistry`. The harness eagerly registers ~30+ wrapper tools (`vibehack_run_subfinder`, `_nuclei`, `_sqlmap`, …) at extension load — but they're **inactive**. The planner sees only the 15 always-active tools by default. To use a wrapper, the planner runs:
+
+1. `vibehack_tool_search({query:"..."})` → returns matches with `id` + `loaded` flag.
+2. `vibehack_load_tools({tool_ids:["vibehack_run_<bin>"]})` → updates the per-engagement loaded set.
+3. `before_agent_start` reads the loaded set and calls `pi.setActiveTools([...base, ...loaded])`.
+4. The wrapper appears in the LLM's tool list on the next turn.
+
+This keeps cold context tiny while exposing a deep toolbox on demand.
+
+## What's a "persona" and how do I use one?
+
+A persona is a system-prompt body that biases the planner toward a specific exploitation domain (SSRF, XSS, SQLi, IDOR, auth-bypass, cloud, mobile, API, AD). The planner can switch with `vibehack_use_persona({name:"ssrf"})`. The body lands in the next `before_agent_start` system prompt under `<persona name=ssrf>...</persona>`. Full list in [COMMANDS.md §9](COMMANDS.md#9-provider-personas-v13).
 
 ## What's the difference between pi-vibehack and fenrir-harness?
 

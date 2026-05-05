@@ -1,6 +1,6 @@
 # Install
 
-Comprehensive install reference for pi-vibehack v1.0.
+Comprehensive install reference for pi-vibehack **v1.4**.
 
 > **Authorized testing only.** The installer prints this disclaimer on first run. Acknowledge it and proceed with scope you actually have permission to test. See [SECURITY.md](SECURITY.md).
 
