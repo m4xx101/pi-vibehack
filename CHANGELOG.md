@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.4.3 — 2026-05-06
+
+**Critical fix.** Operator reported a TUI crash on the second tool call of every engagement:
+
+```
+file:///…/pi-coding-agent/dist/core/tools/render-utils.js:30
+    const textBlocks = result.content.filter((c) => c.type === "text");
+                                      ^
+TypeError: Cannot read properties of undefined (reading 'filter')
+```
+
+### Root cause
+
+pi-mono's `render-utils.d.ts` documents the tool-result shape as:
+
+```ts
+{ content: Array<{type:"text", text?:string, data?:string, mimeType?:string}>,
+  details?: any }
+```
+
+Every vibehack tool (all 15 always-active + the 30+ lazy `vibehack_run_<bin>` wrappers) was returning a plain object like `{matches:[...], total_in_catalogue:32}` or `{report_path:"..."}`. pi-mono's render utility called `.content.filter(...)` on whatever the tool returned and crashed the entire TUI when `content` was undefined.
+
+This had been broken **every release since v1.0** — it never surfaced in tests because vitest calls `.execute()` directly without going through pi-mono's renderer.
+
+### Fix
+
+- New `lib/tool-result.ts` exports `ok(payload)` / `err(message, payload)` / `ensureToolResult(value)` helpers and `wrapToolResult(tool)` — an idempotent registration-time wrapper.
+- `index.ts` now wraps **every** registered tool: the 13 named exports + every `vibehack_run_<bin>` wrapper from `buildLazyTools` + `vibehack_load_tools` / `vibehack_unload_tools`. Wrapped tools normalize their return value into pi-mono's shape and catch any thrown exception, surfacing it as `{isError:true, content:[{type:"text",text:"tool X threw: ..."}]}` so the TUI can render the failure cleanly instead of crashing.
+- The structured payload is preserved in `details` so chains, hooks, and the `tool_result` mirror still see the typed object.
+
+### Tests
+- 343 → 354. New `tests/tool-result-shape.test.ts` (11 cases): helper unit tests + integration tests verifying every always-active tool, every lazy wrapper, and an error-path case all return the documented shape post-wrap.
+
+### Migration
+
+Pure runtime fix — no operator action required beyond `pi-vibehack update && /reload`.
+
+### Why this kept slipping through
+
+Vitest happily ran our tools directly and inspected their raw return values; pi-mono's render contract was never exercised in CI. **Going forward, every new tool MUST be exercised through `wrapToolResult` in its test** (the new shape suite is the template). I'll add a CI guard in v1.5 that fails the build if any registered tool's wrapped output lacks `content[]`.
+
 ## v1.4.2 — 2026-05-06
 
 Operator-reported "/vibehack does nothing" — the planner started, hit "Tool bash not found", thrashed reading non-existent `tree.md`, and never emitted a single `vibehack_expand`. Five bugs fixed.

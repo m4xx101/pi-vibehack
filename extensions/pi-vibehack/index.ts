@@ -14,32 +14,40 @@ import {
   proposeChainTool, proposeSpecialistTool, recallTool, canaryVerifyTool,
   browserVerifyTool, usePersonaTool, reportVulnTool, toolSearchTool,
 } from "./tools/index.ts";
+import { wrapToolResult } from "./lib/tool-result.ts";
 
 export default function vibehack(pi: any) {
+  // v1.4.3: every Tool's execute() must return pi-mono's documented shape
+  // ({content:[{type:"text",text:string}], details?:any}). Pre-1.4.3 tools
+  // returned plain objects which crashed pi-mono's render-utils.js:30 on
+  // every call ("Cannot read properties of undefined (reading 'filter')").
+  // wrapToolResult is idempotent so re-running install is safe.
+  const reg = (t: any) => {
+    try { pi.registerTool(wrapToolResult(t)); } catch {}
+  };
+
   // Tools
-  pi.registerTool(expandTool);
-  pi.registerTool(pruneTool);
-  pi.registerTool(confirmTool);
-  pi.registerTool(evidenceTool);
-  pi.registerTool(deadEndTool);
-  pi.registerTool(proposeChainTool);
-  pi.registerTool(proposeSpecialistTool);
-  pi.registerTool(recallTool);
-  pi.registerTool(canaryVerifyTool);
-  pi.registerTool(browserVerifyTool);
-  pi.registerTool(usePersonaTool);
-  pi.registerTool(reportVulnTool);
-  pi.registerTool(toolSearchTool);
+  reg(expandTool);
+  reg(pruneTool);
+  reg(confirmTool);
+  reg(evidenceTool);
+  reg(deadEndTool);
+  reg(proposeChainTool);
+  reg(proposeSpecialistTool);
+  reg(recallTool);
+  reg(canaryVerifyTool);
+  reg(browserVerifyTool);
+  reg(usePersonaTool);
+  reg(reportVulnTool);
+  reg(toolSearchTool);
 
   // v1.4: lazy bug-bounty tools — register one wrapper per catalogue entry and
   // the load/unload meta-tools. They're inactive by default; before-agent-start
   // picks up the per-engagement loaded set and merges it into setActiveTools.
   import("./lib/lazy-tools.ts").then(({ buildLazyTools, loadToolsTool, unloadToolsTool }) => {
-    for (const t of buildLazyTools(pi)) {
-      try { pi.registerTool(t); } catch {}
-    }
-    try { pi.registerTool(loadToolsTool); } catch {}
-    try { pi.registerTool(unloadToolsTool); } catch {}
+    for (const t of buildLazyTools(pi)) reg(t);
+    reg(loadToolsTool);
+    reg(unloadToolsTool);
   }).catch(() => {});
 
   // Hooks
